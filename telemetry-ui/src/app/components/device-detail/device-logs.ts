@@ -28,7 +28,6 @@ import type { DeviceLogEntry } from '../../models/device';
                 <strong>{{ entry.source }}</strong>
                 <time>{{ entry.timestamp | date: 'short' }}</time>
               </div>
-              <p>{{ entry.payloadText }}</p>
               @if (entry.rawJson) {
                 <pre class="raw-json"><code>{{ entry.rawJson }}</code></pre>
               }
