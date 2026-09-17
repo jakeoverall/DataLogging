@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🌩️ API: DataLogging.Api",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/src/DataLogging.Api/DataLogging.Api.csproj",
+      "launchSettingsProfile": "Development",
+      "serverReadyAction": {
+        "pattern": "Now listening on: (https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    },
+    {
+      "name": "🌐 UI: telemetry-ui (Angular)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "cd ${workspaceFolder}/telemetry-ui && npm start -- --host 0.0.0.0 --port 4200",
+      "cwd": "${workspaceFolder}/telemetry-ui",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ],
+  "compounds": [
+    {
+      "name": " ▶️ API + Angular",
+      "configurations": [
+        "🌩️ API: DataLogging.Api",
+        "🌐 UI: telemetry-ui (Angular)"
+      ]
+    }
+  ]
+}
