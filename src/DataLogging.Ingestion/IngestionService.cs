@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using DataLogging.Core.Models;
 using DataLogging.Ingestion.Abstractions;
 using DataLogging.Ingestion.Models;
+using DataLogging.Ingestion.Normalization;
 
 namespace DataLogging.Ingestion;
 
@@ -9,13 +10,16 @@ public sealed class IngestionService
 {
     private readonly IDeviceRegistry _deviceRegistry;
     private readonly IDataNormalizer _normalizer;
+    private readonly DeviceTelemetryFilter _telemetryFilter;
 
     public IngestionService(
         IDeviceRegistry deviceRegistry,
-        IDataNormalizer normalizer)
+        IDataNormalizer normalizer,
+        DeviceTelemetryFilter telemetryFilter)
     {
         _deviceRegistry = deviceRegistry;
         _normalizer = normalizer;
+        _telemetryFilter = telemetryFilter;
     }
 
     public async IAsyncEnumerable<LogRecord<object>> IngestAsync(
@@ -39,7 +43,13 @@ public sealed class IngestionService
                 continue;
             }
 
-            yield return _normalizer.Normalize(rawData, device);
+            var record = _normalizer.Normalize(rawData, device);
+            if (!_telemetryFilter.ShouldPersist(record, device))
+            {
+                continue;
+            }
+
+            yield return record;
         }
     }
 }

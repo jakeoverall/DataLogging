@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddSingleton<DeviceRegistrationService>();
         services.AddHostedService<DeviceRegistrationInitializationHostedService>();
         services.AddSingleton<IDataNormalizer, DataNormalizer>();
+        services.AddSingleton<DeviceTelemetryFilter>();
         services.AddSingleton<IngestionService>();
 
         return services;
