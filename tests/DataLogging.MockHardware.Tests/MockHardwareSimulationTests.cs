@@ -152,7 +152,7 @@ public sealed class MockHardwareSimulationTests
         await host.StartAsync();
 
         var registry = host.Services.GetRequiredService<MockDeviceRegistry>();
-        var devices = registry.GetDevices();
+        var devices = await WaitForDevicesAsync(registry, expectedCount: 3, timeout: TimeSpan.FromSeconds(3));
 
         Assert.Equal(3, devices.Count);
         Assert.Equal(new[] { "device-001", "device-002", "device-003" }, devices.Select(device => device.DeviceId));
@@ -238,5 +238,25 @@ public sealed class MockHardwareSimulationTests
         }
 
         throw new InvalidOperationException("The source completed before producing a second message.");
+    }
+
+    private static async Task<IReadOnlyCollection<DataLogging.MockHardware.Models.MockDeviceDescriptor>> WaitForDevicesAsync(
+        MockDeviceRegistry registry,
+        int expectedCount,
+        TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var devices = registry.GetDevices();
+            if (devices.Count >= expectedCount)
+            {
+                return devices;
+            }
+
+            await Task.Delay(25);
+        }
+
+        return registry.GetDevices();
     }
 }

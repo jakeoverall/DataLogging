@@ -9,6 +9,7 @@
     <Project Path="src/DataLogging.Sync/DataLogging.Sync.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DataLogging.Ingestion.Tests/DataLogging.Ingestion.Tests.csproj" />
     <Project Path="tests/DataLogging.MockHardware.Tests/DataLogging.MockHardware.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,38 @@
+[
+  {
+    "deviceId": "device-001",
+    "name": "IMU",
+    "deviceType": "IMU",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/imu"
+    }
+  },
+  {
+    "deviceId": "device-002",
+    "name": "Drive Motor Controller",
+    "deviceType": "Drive Motor Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "4"
+    }
+  },
+  {
+    "deviceId": "device-003",
+    "name": "Safety Scanner",
+    "deviceType": "Safety Scanner",
+    "protocol": 2,
+    "address": "10.0.0.122",
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "address": "10.0.0.122"
+    }
+  }
+]

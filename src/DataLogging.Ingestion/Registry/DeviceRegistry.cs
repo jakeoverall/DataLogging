@@ -19,6 +19,13 @@ public sealed class DeviceRegistry : IDeviceRegistry
         }
     }
 
+    public void Upsert(DeviceDefinition device)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+
+        _devices.AddOrUpdate(device.DeviceId, device, (_, _) => device);
+    }
+
     public bool Remove(string deviceId)
     {
         return _devices.TryRemove(deviceId, out _);
@@ -31,6 +38,6 @@ public sealed class DeviceRegistry : IDeviceRegistry
 
     public IReadOnlyCollection<DeviceDefinition> GetAll()
     {
-        return _devices.Values.ToArray();
+        return _devices.Values.OrderBy(device => device.DeviceId).ToArray();
     }
 }

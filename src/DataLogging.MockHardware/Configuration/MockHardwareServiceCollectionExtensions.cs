@@ -11,7 +11,10 @@ namespace DataLogging.MockHardware.Configuration;
 
 public static class MockHardwareServiceCollectionExtensions
 {
-    public static IServiceCollection AddMockHardware(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddMockHardware(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool stopHostOnCompletion = true)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -29,7 +32,14 @@ public static class MockHardwareServiceCollectionExtensions
         services.AddSingleton<MockEthernetSource>();
         services.AddSingleton<IMockEthernetSource>(sp => sp.GetRequiredService<MockEthernetSource>());
         services.AddSingleton<MockHardwareSimulation>();
-        services.AddHostedService<MockHardwareHostedService>();
+        if (stopHostOnCompletion)
+        {
+            services.AddHostedService<MockHardwareHostedService>();
+        }
+        else
+        {
+            services.AddHostedService<MockHardwareContinuousHostedService>();
+        }
 
         return services;
     }
