@@ -28,6 +28,11 @@
       <strong>{{ alertCount() }}</strong>
       <small>Active issues</small>
     </article>
+    <article class="summary-card neutral">
+      <span>Disabled</span>
+      <strong>{{ disabledCount() }}</strong>
+      <small>Ignored for alerts</small>
+    </article>
   </div>
 
   <div class="content-grid">
@@ -43,8 +48,29 @@
       @if (isLoading()) {
       <p class="muted">Loading devices…</p>
       } @else {
+      <div class="filter-row">
+        <input
+          class="filter-input"
+          type="search"
+          placeholder="Search devices..."
+          [value]="searchText()"
+          (input)="onSearchInput($event)"
+        />
+        <select class="filter-select" [value]="statusFilter()" (change)="onStatusFilterChange($event)">
+          @for (option of statusFilterOptions; track option) {
+            <option [value]="option">Status: {{ option }}</option>
+          }
+        </select>
+        <select class="filter-select" [value]="enabledFilter()" (change)="onEnabledFilterChange($event)">
+          @for (option of enabledFilterOptions; track option) {
+            <option [value]="option">{{ option === 'all' ? 'All states' : option === 'enabled' ? 'Enabled only' : 'Disabled only' }}</option>
+          }
+        </select>
+      </div>
+      <p class="filter-results">Showing {{ filteredDevices().length }} of {{ devices().length }} devices</p>
+
       <div class="device-list">
-        @for (device of devices(); track device.id) {
+        @for (device of filteredDevices(); track device.id) {
         <a class="device-row" [routerLink]="['/devices', device.id]">
           <div class="device-main">
             <div class="device-icon" [ngClass]="device.status">{{ device.name.charAt(0) }}</div>
@@ -54,8 +80,20 @@
             </div>
           </div>
           <div class="device-metrics">
-            <span class="status-pill" [ngClass]="device.status">{{ device.status }}</span>
-            <span class="health-meter">{{ device.health }}%</span>
+            @if (device.enabled) {
+              <span class="status-pill" [ngClass]="device.status">{{ device.status }}</span>
+              <span class="health-meter">{{ device.health }}%</span>
+            }
+            <button
+              type="button"
+              class="enabled-pill"
+              [ngClass]="[device.enabled ? 'enabled' : 'disabled', isUpdating(device.id) ? 'pending' : '']"
+              [disabled]="isUpdating(device.id)"
+              (click)="toggleDeviceEnabled($event, device)">
+              {{ isUpdating(device.id)
+                ? (device.enabled ? 'disabling...' : 'enabling...')
+                : (device.enabled ? 'enabled' : 'disabled') }}
+            </button>
           </div>
         </a>
         }

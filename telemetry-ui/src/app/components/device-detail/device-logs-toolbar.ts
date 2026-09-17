@@ -22,9 +22,11 @@ export class DeviceLogsToolbarComponent {
     rawJson: false
   };
   @Input() canExport = false;
+  @Input() expandParsedJsonColumns = false;
 
   @Output() readonly searchChanged = new EventEmitter<string>();
   @Output() readonly columnToggled = new EventEmitter<{ column: ExportColumnKey; checked: boolean }>();
+  @Output() readonly expandParsedJsonColumnsChanged = new EventEmitter<boolean>();
   @Output() readonly exportRequested = new EventEmitter<ExportFormat>();
 
   protected onSearchInput(event: Event) {
@@ -39,6 +41,11 @@ export class DeviceLogsToolbarComponent {
   protected onColumnToggle(column: ExportColumnKey, event: Event) {
     const input = event.target as HTMLInputElement;
     this.columnToggled.emit({ column, checked: input.checked });
+  }
+
+  protected onExpandParsedJsonColumnsToggle(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.expandParsedJsonColumnsChanged.emit(input.checked);
   }
 
   protected requestExport(format: ExportFormat) {

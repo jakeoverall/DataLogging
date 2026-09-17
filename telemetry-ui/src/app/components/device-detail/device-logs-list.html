@@ -11,7 +11,7 @@
         <div class="log-head">
           <span class="log-tag" [ngClass]="entry.level">{{ entry.level }}</span>
           <strong>{{ entry.source }}</strong>
-          <time>{{ entry.timestamp | date: 'short' }}</time>
+          <time>{{ entry.timestamp | date: 'medium' }}</time>
         </div>
         @if (entry.rawJson) {
           <pre class="raw-json"><code>{{ entry.rawJson }}</code></pre>

@@ -137,6 +137,14 @@ public sealed class DevicesController : ControllerBase
                 : "offline";
 
         var health = CalculateHealth(definition.Enabled, state, websocketIsOnline);
+        var alertCount = !definition.Enabled
+            ? 0
+            : status switch
+            {
+                "offline" => 1,
+                "warning" => 1,
+                _ => 0
+            };
 
         return new DeviceSummaryResponse
         {
@@ -150,16 +158,15 @@ public sealed class DevicesController : ControllerBase
             Address = string.IsNullOrWhiteSpace(definition.Address) ? "127.0.0.1" : definition.Address,
             Port = ParsePort(definition.Port),
             Enabled = definition.Enabled,
-            LastSeen = FormatLastSeen(state?.LastEmissionTimestamp, now),
-            LastValue = state is { SequenceNumber: > 0 }
+            LastSeen = definition.Enabled
+                ? FormatLastSeen(state?.LastEmissionTimestamp, now)
+                : "Disabled",
+            LastValue = !definition.Enabled
+                ? "Device disabled"
+                : state is { SequenceNumber: > 0 }
                 ? $"Sequence {state.SequenceNumber}"
                 : "No recent value",
-            AlertCount = status switch
-            {
-                "offline" => 1,
-                "warning" => 1,
-                _ => 0
-            }
+            AlertCount = alertCount
         };
     }
 

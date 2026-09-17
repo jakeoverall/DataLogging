@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import type { DeviceAlert, DeviceLogEntry, DeviceSummary, RuntimeModeResponse } from '../models/device';
+import type { SystemLogFileDescriptor } from '../models/system-logs';
 
 const MAX_LOG_EVENT_BATCH = 20;
 const LOG_STREAM_RECONNECT_MS = 1000;
@@ -226,6 +227,28 @@ export class TelemetryApiService {
         rows.map((row, index) => this.toDeviceLogEntry(row, deviceId, index)).filter((entry) => !!entry) as DeviceLogEntry[]
       ),
       catchError(() => of(fallback))
+    );
+  }
+
+  getSystemLogs(limit = 500): Observable<DeviceLogEntry[]> {
+    const fallback = Object.values(MOCK_LOGS)
+      .flatMap((entries) => entries)
+      .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
+      .slice(0, limit);
+
+    return this.http.get<any[]>(`${this.baseUrl}/api/logs?limit=${limit}`).pipe(
+      map((rows) =>
+        rows
+          .map((row, index) => this.toDeviceLogEntry(row, 'unknown-device', index))
+          .filter((entry) => !!entry) as DeviceLogEntry[]
+      ),
+      catchError(() => of(fallback))
+    );
+  }
+
+  getSystemLogFiles(): Observable<SystemLogFileDescriptor[]> {
+    return this.http.get<SystemLogFileDescriptor[]>(`${this.baseUrl}/api/logs/files`).pipe(
+      catchError(() => of([]))
     );
   }
 

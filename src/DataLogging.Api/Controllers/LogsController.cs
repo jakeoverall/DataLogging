@@ -1,9 +1,11 @@
 using DataLogging.Core.Abstractions;
 using DataLogging.Core.Queries;
+using DataLogging.Storage.Configuration;
 using DataLogging.Storage.Writers;
 using DataLogging.Api.Infrastructure;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace DataLogging.Api.Controllers;
 
@@ -13,13 +15,16 @@ public sealed class LogsController : ControllerBase
 {
     private readonly ILogReader _reader;
     private readonly LiveLogStream _liveLogStream;
+    private readonly DataLogging.Storage.Configuration.StorageOptions _storageOptions;
 
-    public LogsController(ILogReader reader, LiveLogStream liveLogStream)
+    public LogsController(ILogReader reader, LiveLogStream liveLogStream, IOptions<DataLogging.Storage.Configuration.StorageOptions> storageOptions)
     {
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(liveLogStream);
+        ArgumentNullException.ThrowIfNull(storageOptions);
         _reader = reader;
         _liveLogStream = liveLogStream;
+        _storageOptions = storageOptions.Value;
     }
 
     [HttpGet]
@@ -50,6 +55,28 @@ public sealed class LogsController : ControllerBase
         }
 
         return Ok(records);
+    }
+
+    [HttpGet("files")]
+    public IActionResult GetLogFiles()
+    {
+        if (!string.Equals(_storageOptions.Provider, "file", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(_storageOptions.FilePath))
+        {
+            return Ok(Array.Empty<LogFileDescriptor>());
+        }
+
+        var descriptors = EnumerateLogFiles(_storageOptions.FilePath)
+            .Select(path => new LogFileDescriptor(
+                System.IO.Path.GetFileName(path),
+                path,
+                System.IO.File.Exists(path) ? new System.IO.FileInfo(path).Length : 0,
+                System.IO.File.Exists(path) ? System.IO.File.GetLastWriteTimeUtc(path) : DateTime.MinValue,
+                string.Equals(path, System.IO.Path.GetFullPath(_storageOptions.FilePath), StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(file => file.IsCurrent)
+            .ThenByDescending(file => file.LastModifiedUtc)
+            .ToArray();
+
+        return Ok(descriptors);
     }
 
     [HttpGet("stream")]
@@ -158,4 +185,45 @@ public sealed class LogsController : ControllerBase
             payloadText
         };
     }
+
+    private static IEnumerable<string> EnumerateLogFiles(string filePath)
+    {
+        var fullCurrentPath = Path.GetFullPath(filePath);
+        var directory = System.IO.Path.GetDirectoryName(fullCurrentPath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            directory = System.IO.Directory.GetCurrentDirectory();
+        }
+
+        if (!System.IO.Directory.Exists(directory))
+        {
+            yield break;
+        }
+
+        var fileName = System.IO.Path.GetFileNameWithoutExtension(fullCurrentPath);
+        var extension = System.IO.Path.GetExtension(fullCurrentPath);
+
+        if (System.IO.File.Exists(fullCurrentPath))
+        {
+            yield return fullCurrentPath;
+        }
+
+        var pattern = string.IsNullOrWhiteSpace(extension)
+            ? $"{fileName}.*"
+            : $"{fileName}.*{extension}";
+
+        foreach (var path in System.IO.Directory.EnumerateFiles(directory, pattern, SearchOption.TopDirectoryOnly)
+                     .Where(path => !string.Equals(path, fullCurrentPath, StringComparison.OrdinalIgnoreCase))
+                     .OrderByDescending(path => System.IO.File.GetLastWriteTimeUtc(path)))
+        {
+            yield return path;
+        }
+    }
 }
+
+public sealed record LogFileDescriptor(
+    string Name,
+    string Path,
+    long SizeBytes,
+    DateTime LastModifiedUtc,
+    bool IsCurrent);

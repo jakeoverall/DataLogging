@@ -24,6 +24,7 @@ export class DeviceLogsComponent {
   protected readonly page = this.facade.page;
   protected readonly searchText = this.facade.searchText;
   protected readonly selectedColumns = this.facade.selectedColumns;
+  protected readonly expandParsedJsonColumns = this.facade.expandParsedJsonColumns;
   protected readonly streamState = this.facade.streamState;
   protected readonly streamStateLabel = this.facade.streamStateLabel;
   protected readonly streamAgeLabel = this.facade.streamAgeLabel;
@@ -38,6 +39,10 @@ export class DeviceLogsComponent {
 
   protected onColumnToggled(change: { column: ExportColumnKey; checked: boolean }) {
     this.facade.onColumnToggled(change);
+  }
+
+  protected onExpandParsedJsonColumnsToggled(checked: boolean) {
+    this.facade.onExpandParsedJsonColumnsToggled(checked);
   }
 
   protected exportLogs(format: ExportFormat) {
