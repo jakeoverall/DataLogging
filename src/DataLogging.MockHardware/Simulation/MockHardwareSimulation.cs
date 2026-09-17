@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using DataLogging.MockHardware.Abstractions;
 using DataLogging.MockHardware.Configuration;
 using DataLogging.MockHardware.Models;
 using DataLogging.MockHardware.Registry;
@@ -16,6 +17,7 @@ public sealed class MockHardwareSimulation
     private readonly MockRos2Source _ros2Source;
     private readonly MockCanOpenSource _canOpenSource;
     private readonly MockEthernetSource _ethernetSource;
+    private readonly IMockHardwareController _controller;
     private readonly ILogger<MockHardwareSimulation> _logger;
     private readonly TimeProvider _timeProvider;
 
@@ -25,6 +27,7 @@ public sealed class MockHardwareSimulation
         MockRos2Source ros2Source,
         MockCanOpenSource canOpenSource,
         MockEthernetSource ethernetSource,
+        IMockHardwareController controller,
         ILogger<MockHardwareSimulation> logger,
         TimeProvider timeProvider)
     {
@@ -33,6 +36,7 @@ public sealed class MockHardwareSimulation
         ArgumentNullException.ThrowIfNull(ros2Source);
         ArgumentNullException.ThrowIfNull(canOpenSource);
         ArgumentNullException.ThrowIfNull(ethernetSource);
+        ArgumentNullException.ThrowIfNull(controller);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(timeProvider);
 
@@ -41,6 +45,7 @@ public sealed class MockHardwareSimulation
         _ros2Source = ros2Source;
         _canOpenSource = canOpenSource;
         _ethernetSource = ethernetSource;
+        _controller = controller;
         _logger = logger;
         _timeProvider = timeProvider;
     }
@@ -97,17 +102,35 @@ public sealed class MockHardwareSimulation
     {
         var random = new Random(seed);
         var sequenceNumber = 0UL;
+        var isOnline = true;
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 var timestamp = _timeProvider.GetUtcNow();
-
-                if (_registry.TryGet(device.Descriptor.DeviceId, out var state) && state is not null && !state.IsOnline)
+                var status = _controller.GetStatus();
+                if (status.State == MockHardwareRunState.Stopped)
                 {
-                    _registry.RecordDrop(device.Descriptor.DeviceId, timestamp);
-                    await Task.Delay(_options.EmitFrequency, cancellationToken).ConfigureAwait(false);
+                    if (isOnline)
+                    {
+                        _registry.SetOnline(device.Descriptor.DeviceId, false, timestamp);
+                        isOnline = false;
+                    }
+
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (!isOnline)
+                {
+                    _registry.SetOnline(device.Descriptor.DeviceId, true, timestamp);
+                    isOnline = true;
+                }
+
+                if (status.State == MockHardwareRunState.Paused)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
                     continue;
                 }
 
@@ -134,7 +157,10 @@ public sealed class MockHardwareSimulation
         }
         finally
         {
-            _registry.SetOnline(device.Descriptor.DeviceId, false, _timeProvider.GetUtcNow());
+            if (isOnline)
+            {
+                _registry.SetOnline(device.Descriptor.DeviceId, false, _timeProvider.GetUtcNow());
+            }
         }
     }
 

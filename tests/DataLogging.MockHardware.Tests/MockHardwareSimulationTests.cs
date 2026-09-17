@@ -184,6 +184,36 @@ public sealed class MockHardwareSimulationTests
         Assert.Equal(firstRun, secondRun);
     }
 
+    [Fact]
+    public async Task ControlCommands_StopAndResumeEmissions()
+    {
+        using var host = MockHardwareTestHost.CreateHost(settings =>
+        {
+            settings["NDevices"] = "1";
+            settings["EmitFrequency"] = "25ms";
+            settings["Seed"] = "42";
+        });
+
+        await host.StartAsync();
+
+        var registry = host.Services.GetRequiredService<MockDeviceRegistry>();
+        var controller = host.Services.GetRequiredService<IMockHardwareController>();
+
+        var initial = await WaitForSequenceAsync(registry, "device-001", timeout: TimeSpan.FromSeconds(3));
+        controller.Stop();
+        var pausedSequence = await WaitForSequenceAsync(registry, "device-001", timeout: TimeSpan.FromSeconds(1));
+        await Task.Delay(200);
+        var afterDelay = await WaitForSequenceAsync(registry, "device-001", timeout: TimeSpan.FromSeconds(1));
+
+        Assert.Equal(pausedSequence, afterDelay);
+
+        controller.Start();
+        var resumed = await WaitForSequenceGreaterThanAsync(registry, "device-001", pausedSequence, TimeSpan.FromSeconds(3));
+        Assert.True(resumed > initial);
+
+        await host.StopAsync(TimeSpan.FromSeconds(3));
+    }
+
     private static async Task<string> CaptureFirstRos2PayloadAsync()
     {
         using var host = MockHardwareTestHost.CreateHost(settings =>
@@ -258,5 +288,41 @@ public sealed class MockHardwareSimulationTests
         }
 
         return registry.GetDevices();
+    }
+
+    private static async Task<ulong> WaitForSequenceAsync(MockDeviceRegistry registry, string deviceId, TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (registry.TryGet(deviceId, out var state) && state is not null && state.SequenceNumber > 0)
+            {
+                return state.SequenceNumber;
+            }
+
+            await Task.Delay(25);
+        }
+
+        throw new TimeoutException("Timed out waiting for device sequence.");
+    }
+
+    private static async Task<ulong> WaitForSequenceGreaterThanAsync(
+        MockDeviceRegistry registry,
+        string deviceId,
+        ulong floor,
+        TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (registry.TryGet(deviceId, out var state) && state is not null && state.SequenceNumber > floor)
+            {
+                return state.SequenceNumber;
+            }
+
+            await Task.Delay(25);
+        }
+
+        throw new TimeoutException("Timed out waiting for sequence advancement.");
     }
 }

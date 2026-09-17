@@ -18,12 +18,14 @@ public static class DependencyInjection
 
         services.AddSingleton<InMemoryLogStore>();
         services.AddSingleton<NdjsonLogStore>();
+        services.AddSingleton<LiveLogStream>();
         services.AddSingleton<ILogWriter>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
-            return StorageProviderNames.IsFile(options.Provider)
+            ILogWriter inner = StorageProviderNames.IsFile(options.Provider)
                 ? sp.GetRequiredService<NdjsonLogStore>()
                 : sp.GetRequiredService<InMemoryLogStore>();
+            return new LiveLogWriter(inner, sp.GetRequiredService<LiveLogStream>());
         });
         services.AddSingleton<ILogReader>(sp =>
         {

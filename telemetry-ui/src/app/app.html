@@ -1,0 +1,20 @@
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">DL</span>
+      <div>
+        <strong>DataLogging</strong>
+        <small>Telemetry console</small>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/devices/vehicle-101" routerLinkActive="active">Vehicle 101</a>
+    </nav>
+  </aside>
+
+  <main class="content-shell">
+    <router-outlet />
+  </main>
+</div>

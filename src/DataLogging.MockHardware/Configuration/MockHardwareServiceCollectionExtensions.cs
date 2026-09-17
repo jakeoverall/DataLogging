@@ -25,6 +25,7 @@ public static class MockHardwareServiceCollectionExtensions
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<MockDeviceRegistry>();
+        services.AddSingleton<IMockHardwareController, MockHardwareController>();
         services.AddSingleton<MockRos2Source>();
         services.AddSingleton<IMockRos2Source>(sp => sp.GetRequiredService<MockRos2Source>());
         services.AddSingleton<MockCanOpenSource>();

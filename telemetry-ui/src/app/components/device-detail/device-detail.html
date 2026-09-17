@@ -1,0 +1,43 @@
+<section class="device-detail-page">
+  @if (device(); as currentDevice) {
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Device view</p>
+        <h1>{{ currentDevice.name }}</h1>
+      </div>
+      <div class="header-actions">
+        <span class="status-pill" [ngClass]="currentDevice.status">{{ currentDevice.status }}</span>
+        <button type="button" class="secondary-button" [routerLink]="['/dashboard']">Back to dashboard</button>
+      </div>
+    </header>
+
+    <div class="summary-strip">
+      <article>
+        <label>Health</label>
+        <strong [ngClass]="healthClass()">{{ currentDevice.health }}%</strong>
+      </article>
+      <article>
+        <label>Protocol</label>
+        <strong>{{ currentDevice.protocol }}</strong>
+      </article>
+      <article>
+        <label>Address</label>
+        <strong>{{ currentDevice.address }}</strong>
+      </article>
+      <article>
+        <label>Last seen</label>
+        <strong>{{ currentDevice.lastSeen }}</strong>
+      </article>
+    </div>
+
+    <nav class="tabs" aria-label="Device details tabs">
+      <a routerLink="./overview" routerLinkActive="active">Overview</a>
+      <a routerLink="./logs" routerLinkActive="active">Logs</a>
+      <a routerLink="./settings" routerLinkActive="active">Settings</a>
+    </nav>
+
+    <router-outlet />
+  } @else {
+    <p class="muted">Loading device details…</p>
+  }
+</section>
