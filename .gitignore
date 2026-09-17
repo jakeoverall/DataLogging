@@ -11,3 +11,4 @@ packages/
 TestResults/
 coverage/
 *.log
+*.ndjson
