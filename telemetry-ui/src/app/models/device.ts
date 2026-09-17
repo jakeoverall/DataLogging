@@ -31,6 +31,7 @@ export interface DeviceLogEntry {
   timestamp: string;
   level: 'info' | 'warn' | 'error';
   payloadText: string;
+  rawJson?: string;
 }
 
 export interface RuntimeModeResponse {

@@ -4,5 +4,6 @@ public enum DeviceProtocol
 {
     Ros2 = 0,
     CanOpen = 1,
-    Ethernet = 2
+    Ethernet = 2,
+    WebSocket = 3
 }

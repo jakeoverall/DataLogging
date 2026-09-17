@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
+import { filter, map, switchMap } from 'rxjs';
 import { TelemetryApiService } from '../../services/telemetry-api.service';
 import type { DeviceSummary } from '../../models/device';
 
@@ -71,13 +73,17 @@ export class DeviceOverviewComponent {
   });
 
   constructor() {
-    this.route.parent?.paramMap.subscribe((params) => {
-      const deviceId = params.get('id');
-      if (!deviceId) {
-        return;
-      }
+    const destroyRef = inject(DestroyRef);
 
-      this.api.getDeviceById(deviceId).subscribe((device) => this.device.set(device));
-    });
+    this.route.parent?.paramMap
+      .pipe(
+        map((params) => params.get('id')),
+        filter((deviceId): deviceId is string => Boolean(deviceId)),
+        switchMap((deviceId) => this.api.streamDevices().pipe(
+          map((devices) => devices.find((entry) => entry.id === deviceId || entry.deviceId === deviceId))
+        )),
+        takeUntilDestroyed(destroyRef)
+      )
+      .subscribe((device) => this.device.set(device));
   }
 }

@@ -38,25 +38,25 @@
       </div>
 
       @if (isLoading()) {
-        <p class="muted">Loading devices…</p>
+      <p class="muted">Loading devices…</p>
       } @else {
-        <div class="device-list">
-          @for (device of devices(); track device.id) {
-            <a class="device-row" [routerLink]="['/devices', device.id]">
-              <div class="device-main">
-                <div class="device-icon" [ngClass]="device.status">{{ device.name.charAt(0) }}</div>
-                <div>
-                  <h3>{{ device.name }}</h3>
-                  <small>{{ device.deviceType }} · {{ device.protocol }}</small>
-                </div>
-              </div>
-              <div class="device-metrics">
-                <span class="status-pill" [ngClass]="device.status">{{ device.status }}</span>
-                <span class="health-meter">{{ device.health }}%</span>
-              </div>
-            </a>
-          }
-        </div>
+      <div class="device-list">
+        @for (device of devices(); track device.id) {
+        <a class="device-row" [routerLink]="['/devices', device.id]">
+          <div class="device-main">
+            <div class="device-icon" [ngClass]="device.status">{{ device.name.charAt(0) }}</div>
+            <div>
+              <h3>{{ device.name }}</h3>
+              <small>{{ device.deviceType }} · {{ device.protocol }}</small>
+            </div>
+          </div>
+          <div class="device-metrics">
+            <span class="status-pill" [ngClass]="device.status">{{ device.status }}</span>
+            <span class="health-meter">{{ device.health }}%</span>
+          </div>
+        </a>
+        }
+      </div>
       }
     </section>
 
@@ -67,13 +67,12 @@
       </div>
       <ul class="alert-list">
         @for (alert of alerts(); track alert.deviceId + alert.title) {
-          <li>
-            <strong>{{ alert.title }}</strong>
-            <span>{{ alert.message }}</span>
-          </li>
+        <li>
+          <strong>{{ alert.title }}</strong>
+          <span>{{ alert.message }}</span>
+        </li>
         }
       </ul>
-
       <form class="register-form" (ngSubmit)="registerDevice()">
         <h3>Register device</h3>
         <label>
@@ -82,15 +81,23 @@
         </label>
         <label>
           <span>Type</span>
-          <input [(ngModel)]="form.deviceType" name="deviceType" placeholder="Custom gateway" />
+          <input [(ngModel)]="form.deviceType" name="deviceType" placeholder="Custom gateway (IP address:port)" />
         </label>
         <label>
           <span>Protocol</span>
           <select [(ngModel)]="form.protocol" name="protocol">
-            <option value="Ethernet">Ethernet</option>
-            <option value="ROS2">ROS2</option>
-            <option value="CANOpen">CANOpen</option>
+            @for (option of protocolOptions; track option) {
+              <option [value]="option">{{ option }}</option>
+            }
           </select>
+        </label>
+        <label>
+          <span>Address</span>
+          <input [(ngModel)]="form.address" name="address" placeholder="10.12.0.90" />
+        </label>
+        <label>
+          <span>Port</span>
+          <input type="number" [(ngModel)]="form.port" name="port" min="1" max="65535" />
         </label>
         <button type="submit" class="primary-button">Add device</button>
       </form>

@@ -66,27 +66,35 @@ public sealed class DevicesController : ControllerBase
     public async Task StreamDevicesAsync(CancellationToken cancellationToken)
     {
         SseResponseWriter.Configure(Response);
-        await SseResponseWriter.WriteEventAsync(Response, "connected", new { status = "connected" }, cancellationToken).ConfigureAwait(false);
-        await SseResponseWriter.WriteEventAsync(
-            Response,
-            "snapshot",
-            new DeviceStreamSnapshotResponse
-            {
-                Timestamp = DateTimeOffset.UtcNow,
-                Devices = BuildDeviceSummaries()
-            },
-            cancellationToken).ConfigureAwait(false);
 
-        using var timer = new PeriodicTimer(StreamUpdateInterval);
-        while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            var payload = new DeviceStreamSnapshotResponse
-            {
-                Timestamp = DateTimeOffset.UtcNow,
-                Devices = BuildDeviceSummaries()
-            };
+            await SseResponseWriter.WriteEventAsync(Response, "connected", new { status = "connected" }, cancellationToken).ConfigureAwait(false);
+            await SseResponseWriter.WriteEventAsync(
+                Response,
+                "snapshot",
+                new DeviceStreamSnapshotResponse
+                {
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Devices = BuildDeviceSummaries()
+                },
+                cancellationToken).ConfigureAwait(false);
 
-            await SseResponseWriter.WriteEventAsync(Response, "snapshot", payload, cancellationToken).ConfigureAwait(false);
+            using var timer = new PeriodicTimer(StreamUpdateInterval);
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            {
+                var payload = new DeviceStreamSnapshotResponse
+                {
+                    Timestamp = DateTimeOffset.UtcNow,
+                    Devices = BuildDeviceSummaries()
+                };
+
+                await SseResponseWriter.WriteEventAsync(Response, "snapshot", payload, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The client disconnected or the request was aborted; treat this as a normal shutdown.
         }
     }
 

@@ -1,9 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { filter, map, switchMap } from 'rxjs';
 import { TelemetryApiService } from '../../services/telemetry-api.service';
 import type { DeviceSummary } from '../../models/device';
+
+const PROTOCOL_OPTIONS = ['Ethernet', 'ROS2', 'CANOpen', 'WebSocket'];
 
 @Component({
   selector: 'app-device-settings',
@@ -20,7 +24,11 @@ import type { DeviceSummary } from '../../models/device';
           </label>
           <label>
             <span>Protocol</span>
-            <input type="text" [(ngModel)]="form.protocol" name="protocol" />
+            <select [(ngModel)]="form.protocol" name="protocol">
+              @for (option of protocolOptions; track option) {
+                <option [value]="option">{{ option }}</option>
+              }
+            </select>
           </label>
           <label>
             <span>Address</span>
@@ -54,16 +62,22 @@ export class DeviceSettingsComponent {
   private readonly api = inject(TelemetryApiService);
   private readonly route = inject(ActivatedRoute);
   protected readonly device = signal<DeviceSummary | undefined>(undefined);
+  protected readonly protocolOptions = PROTOCOL_OPTIONS;
   protected form = { name: '', protocol: 'Ethernet', address: '127.0.0.1', port: 9000 };
 
   constructor() {
-    this.route.parent?.paramMap.subscribe((params) => {
-      const deviceId = params.get('id');
-      if (!deviceId) {
-        return;
-      }
+    const destroyRef = inject(DestroyRef);
 
-      this.api.getDeviceById(deviceId).subscribe((device) => {
+    this.route.parent?.paramMap
+      .pipe(
+        map((params) => params.get('id')),
+        filter((deviceId): deviceId is string => Boolean(deviceId)),
+        switchMap((deviceId) => this.api.streamDevices().pipe(
+          map((devices) => devices.find((entry) => entry.id === deviceId || entry.deviceId === deviceId))
+        )),
+        takeUntilDestroyed(destroyRef)
+      )
+      .subscribe((device) => {
         this.device.set(device);
         if (device) {
           this.form = {
@@ -74,7 +88,6 @@ export class DeviceSettingsComponent {
           };
         }
       });
-    });
   }
 
   protected saveChanges() {
@@ -89,6 +102,14 @@ export class DeviceSettingsComponent {
       protocol: this.form.protocol,
       address: this.form.address,
       port: Number(this.form.port) || currentDevice.port
-    }).subscribe();
+    }).subscribe(() => {
+      this.device.set({
+        ...currentDevice,
+        name: this.form.name,
+        protocol: this.form.protocol,
+        address: this.form.address,
+        port: Number(this.form.port) || currentDevice.port
+      });
+    });
   }
 }

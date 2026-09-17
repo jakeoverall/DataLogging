@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import type { DeviceAlert, DeviceLogEntry, DeviceSummary, RuntimeModeResponse } from '../models/device';
 
-const normalizeProtocol = (value: unknown) => {
+const normalizeProtocol = (value: unknown): string => {
   if (typeof value === 'string') {
     return value;
   }
@@ -15,8 +15,32 @@ const normalizeProtocol = (value: unknown) => {
       return 'CANOpen';
     case 2:
       return 'Ethernet';
+    case 3:
+      return 'WebSocket';
     default:
       return 'Ethernet';
+  }
+};
+
+const normalizeProtocolValue = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  switch (String(value ?? 'Ethernet').trim().toLowerCase()) {
+    case 'ros2':
+    case 'ros-2':
+      return 0;
+    case 'canopen':
+    case 'can-open':
+      return 1;
+    case 'ethernet':
+      return 2;
+    case 'websocket':
+    case 'ws':
+      return 3;
+    default:
+      return 2;
   }
 };
 
@@ -100,8 +124,10 @@ const MOCK_LOGS: Record<string, DeviceLogEntry[]> = {
 
 @Injectable({ providedIn: 'root' })
 export class TelemetryApiService {
+
   private readonly http = inject(HttpClient);
   private readonly baseUrl = 'http://localhost:5147';
+  private readonly liveDeviceStream$ = this.createLiveDeviceStream();
 
   getRuntimeMode(): Observable<RuntimeModeResponse> {
     return this.http.get<RuntimeModeResponse>(`${this.baseUrl}/api/runtime/mode`).pipe(
@@ -117,9 +143,23 @@ export class TelemetryApiService {
   }
 
   streamDevices(): Observable<DeviceSummary[]> {
+    return this.liveDeviceStream$;
+  }
+
+  private createLiveDeviceStream(): Observable<DeviceSummary[]> {
     return new Observable<DeviceSummary[]>((subscriber) => {
       const source = new EventSource(`${this.baseUrl}/api/devices/stream`);
       let fallbackLoaded = false;
+      let initialLoadSent = false;
+
+      const emitCurrentDevices = () => {
+        if (initialLoadSent) {
+          return;
+        }
+
+        initialLoadSent = true;
+        this.getDevices().subscribe((devices) => subscriber.next(devices));
+      };
 
       const handleSnapshot = (event: Event) => {
         const message = event as MessageEvent<string>;
@@ -128,9 +168,11 @@ export class TelemetryApiService {
           return;
         }
 
+        initialLoadSent = true;
         subscriber.next(payload);
       };
 
+      source.addEventListener('connected', emitCurrentDevices as EventListener);
       source.addEventListener('snapshot', handleSnapshot as EventListener);
       source.onerror = () => {
         if (fallbackLoaded) {
@@ -143,15 +185,17 @@ export class TelemetryApiService {
 
       return () => {
         source.removeEventListener('snapshot', handleSnapshot as EventListener);
+        source.removeEventListener('connected', emitCurrentDevices as EventListener);
         source.close();
       };
     }).pipe(
-      catchError(() => this.getDevices())
+      catchError(() => this.getDevices()),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
   }
 
   getDeviceById(deviceId: string): Observable<DeviceSummary | undefined> {
-    return this.getDevices().pipe(
+    return this.streamDevices().pipe(
       map((devices) => devices.find((device) => device.id === deviceId || device.deviceId === deviceId))
     );
   }
@@ -234,30 +278,36 @@ export class TelemetryApiService {
     } catch {
       return 'No payload preview available.';
     }
+  }
 
-    private parseStreamPayload(value: string): DeviceSummary[] | null {
-      try {
-        const parsed = JSON.parse(value) as { devices?: Array<Partial<DeviceSummary> & { deviceId?: string }> };
-        if (!parsed.devices) {
-          return null;
-        }
-
-        return parsed.devices.map((device) => normalizeDevice(device));
-      } catch {
+  private parseStreamPayload(value: string): DeviceSummary[] | null {
+    try {
+      const parsed = JSON.parse(value) as { devices?: Array<Partial<DeviceSummary> & { deviceId?: string }> };
+      if (!parsed.devices) {
         return null;
       }
+
+      return parsed.devices.map((device) => normalizeDevice(device));
+    } catch {
+      return null;
     }
   }
 
   registerDevice(deviceId: string, payload: Partial<DeviceSummary>) {
-    return this.http.put(`${this.baseUrl}/api/devices/${encodeURIComponent(deviceId)}`, {
+    const requestBody = {
       name: payload.name ?? deviceId,
       deviceType: payload.deviceType ?? 'Custom',
-      protocol: payload.protocol ?? 'Ethernet',
+      protocol: normalizeProtocolValue(payload.protocol ?? 'Ethernet'),
       address: payload.address ?? '127.0.0.1',
-      port: payload.port ?? 9000,
+      port: String(payload.port ?? 9000),
       enabled: payload.enabled ?? true,
-      properties: {}
-    }).pipe(catchError(() => of(true)));
+      properties: {
+        ...(payload as Record<string, unknown>)
+      }
+    };
+
+    return this.http.put(`${this.baseUrl}/api/devices/${encodeURIComponent(deviceId)}`, requestBody).pipe(
+      catchError(() => of(true))
+    );
   }
 }

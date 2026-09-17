@@ -20,6 +20,7 @@ export class DashboardComponent implements OnDestroy {
   protected readonly devices = signal<DeviceSummary[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly alerts = signal<DeviceAlert[]>([]);
+  protected readonly protocolOptions = ['Ethernet', 'ROS2', 'CANOpen', 'WebSocket'];
   protected form = {
     name: '',
     deviceType: 'Custom gateway',
@@ -34,6 +35,7 @@ export class DashboardComponent implements OnDestroy {
   protected readonly alertCount = computed(() => this.alerts().length);
 
   constructor() {
+    this.loadDevices();
     this.connectDeviceStream();
   }
 
@@ -62,6 +64,7 @@ export class DashboardComponent implements OnDestroy {
   }
 
   private loadDevices() {
+    this.isLoading.set(true);
     this.api.getDevices().subscribe((devices) => {
       this.devices.set(devices);
       this.alerts.set(this.buildAlerts(devices));
