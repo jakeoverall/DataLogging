@@ -34,5 +34,346 @@
     "properties": {
       "address": "10.0.0.122"
     }
+  },
+  {
+    "deviceId": "device-004",
+    "name": "Wheel Encoder",
+    "deviceType": "Wheel Encoder",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/wheel_encoder"
+    }
+  },
+  {
+    "deviceId": "device-005",
+    "name": "Steering Controller",
+    "deviceType": "Steering Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "5"
+    }
+  },
+  {
+    "deviceId": "device-006",
+    "name": "Industrial Sensor",
+    "deviceType": "Industrial Sensor",
+    "protocol": 2,
+    "address": "10.0.0.135",
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "address": "10.0.0.135"
+    }
+  },
+  {
+    "deviceId": "device-007",
+    "name": "Battery Monitor",
+    "deviceType": "Battery Monitor",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/battery"
+    }
+  },
+  {
+    "deviceId": "device-008",
+    "name": "Fork Controller",
+    "deviceType": "Fork Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "6"
+    }
+  },
+  {
+    "deviceId": "device-009",
+    "name": "Motor Controller",
+    "deviceType": "Motor Controller",
+    "protocol": 2,
+    "address": "10.0.0.148",
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "address": "10.0.0.148"
+    }
+  },
+  {
+    "deviceId": "device-010",
+    "name": "Fork Position",
+    "deviceType": "Fork Position",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/fork_position"
+    }
+  },
+  {
+    "deviceId": "device-011",
+    "name": "LiDAR",
+    "deviceType": "LiDAR",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/lidar"
+    }
+  },
+  {
+    "deviceId": "device-012",
+    "name": "Camera",
+    "deviceType": "Camera",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/camera"
+    }
+  },
+  {
+    "deviceId": "device-013",
+    "name": "Battery Controller",
+    "deviceType": "Battery Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "7"
+    }
+  },
+  {
+    "deviceId": "device-014",
+    "name": "IMU",
+    "deviceType": "IMU",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/imu"
+    }
+  },
+  {
+    "deviceId": "device-015",
+    "name": "Drive Motor Controller",
+    "deviceType": "Drive Motor Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "4"
+    }
+  },
+  {
+    "deviceId": "device-016",
+    "name": "Safety Scanner",
+    "deviceType": "Safety Scanner",
+    "protocol": 2,
+    "address": "10.0.0.135",
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "address": "10.0.0.135"
+    }
+  },
+  {
+    "deviceId": "device-017",
+    "name": "Wheel Encoder",
+    "deviceType": "Wheel Encoder",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/wheel_encoder"
+    }
+  },
+  {
+    "deviceId": "device-018",
+    "name": "Steering Controller",
+    "deviceType": "Steering Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "5"
+    }
+  },
+  {
+    "deviceId": "device-019",
+    "name": "Industrial Sensor",
+    "deviceType": "Industrial Sensor",
+    "protocol": 2,
+    "address": "10.0.0.148",
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "address": "10.0.0.148"
+    }
+  },
+  {
+    "deviceId": "device-020",
+    "name": "Battery Monitor",
+    "deviceType": "Battery Monitor",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/battery"
+    }
+  },
+  {
+    "deviceId": "device-021",
+    "name": "Fork Controller",
+    "deviceType": "Fork Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "6"
+    }
+  },
+  {
+    "deviceId": "device-022",
+    "name": "Motor Controller",
+    "deviceType": "Motor Controller",
+    "protocol": 2,
+    "address": "10.0.0.161",
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "address": "10.0.0.161"
+    }
+  },
+  {
+    "deviceId": "device-023",
+    "name": "Fork Position",
+    "deviceType": "Fork Position",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/fork_position"
+    }
+  },
+  {
+    "deviceId": "device-024",
+    "name": "LiDAR",
+    "deviceType": "LiDAR",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/lidar"
+    }
+  },
+  {
+    "deviceId": "device-025",
+    "name": "Camera",
+    "deviceType": "Camera",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/camera"
+    }
+  },
+  {
+    "deviceId": "device-026",
+    "name": "Battery Controller",
+    "deviceType": "Battery Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "7"
+    }
+  },
+  {
+    "deviceId": "device-027",
+    "name": "IMU",
+    "deviceType": "IMU",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/imu"
+    }
+  },
+  {
+    "deviceId": "device-028",
+    "name": "Drive Motor Controller",
+    "deviceType": "Drive Motor Controller",
+    "protocol": 1,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "nodeId": "4"
+    }
+  },
+  {
+    "deviceId": "device-029",
+    "name": "Safety Scanner",
+    "deviceType": "Safety Scanner",
+    "protocol": 2,
+    "address": "10.0.0.148",
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "address": "10.0.0.148"
+    }
+  },
+  {
+    "deviceId": "device-030",
+    "name": "Wheel Encoder",
+    "deviceType": "Wheel Encoder",
+    "protocol": 0,
+    "address": null,
+    "port": null,
+    "enabled": true,
+    "properties": {
+      "topic": "/topic/wheel_encoder"
+    }
+  },
+  {
+    "deviceId": "turtlesim001",
+    "name": "ROS Turtle",
+    "deviceType": "Custom gateway",
+    "protocol": 3,
+    "address": "192.168.1.220",
+    "port": "8765",
+    "enabled": true,
+    "properties": {
+      "name": "ROS Turtle",
+      "deviceType": "Custom gateway",
+      "protocol": "WebSocket",
+      "address": "192.168.1.220",
+      "port": "8765",
+      "enabled": "true"
+    }
   }
 ]

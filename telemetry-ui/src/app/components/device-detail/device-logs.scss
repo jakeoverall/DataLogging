@@ -1,0 +1,66 @@
+:host {
+  display: block;
+}
+
+.panel {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  margin: 0;
+  color: white;
+}
+
+.stream-status {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.stream-status small {
+  color: #bfdbfe;
+  font-size: 0.72rem;
+}
+
+.stream-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stream-badge.connecting {
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.stream-badge.live {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.stream-badge.reconnecting {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.result-info {
+  margin: 0 0 0.75rem;
+  color: #c7d2fe;
+  font-size: 0.82rem;
+}

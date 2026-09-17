@@ -12,7 +12,9 @@
 .panel-header,
 .device-row,
 .device-main,
-.device-metrics {
+.device-metrics,
+.panel-actions,
+.register-actions {
   display: flex;
   align-items: center;
 }
@@ -31,6 +33,10 @@
 }
 
 h1, h2, h3, p { margin: 0; }
+
+.panel-actions {
+  gap: 0.5rem;
+}
 
 .primary-button {
   border: none;
@@ -55,6 +61,12 @@ h1, h2, h3, p { margin: 0; }
   border-radius: 16px;
   padding: 1rem 1.25rem;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .summary-card {
@@ -86,6 +98,12 @@ h1, h2, h3, p { margin: 0; }
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
   gap: 1rem;
+  min-height: 0;
+}
+
+.device-panel,
+.alerts-panel {
+  max-height: 34rem;
 }
 
 .device-list {
@@ -93,6 +111,8 @@ h1, h2, h3, p { margin: 0; }
   flex-direction: column;
   gap: 0.8rem;
   margin-top: 1rem;
+  overflow: auto;
+  padding-right: 0.2rem;
 }
 
 .device-row {
@@ -144,6 +164,11 @@ h1, h2, h3, p { margin: 0; }
 .health-meter { background: rgba(96, 165, 250, 0.12); color: #93c5fd; }
 .soft-badge { background: rgba(59, 130, 246, 0.12); color: #bfdbfe; }
 
+.pill-button {
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  cursor: pointer;
+}
+
 .alert-list {
   list-style: none;
   padding: 0;
@@ -151,6 +176,8 @@ h1, h2, h3, p { margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+  overflow: auto;
+  padding-right: 0.2rem;
 }
 
 .alert-list li {
@@ -170,14 +197,16 @@ h1, h2, h3, p { margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  margin-top: 1.2rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.15);
-  padding-top: 1rem;
 }
 
 .register-form h3 {
   margin: 0;
   color: white;
+}
+
+.register-actions {
+  justify-content: flex-end;
+  gap: 0.6rem;
 }
 
 .register-form label {
@@ -196,9 +225,46 @@ h1, h2, h3, p { margin: 0; }
   padding: 0.7rem 0.8rem;
 }
 
+.ghost-button {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  background: rgba(30, 41, 59, 0.65);
+  color: #dbeafe;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.68);
+  z-index: 60;
+}
+
+.register-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 16px;
+  padding: 1.2rem;
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.45);
+  color: #e2e8f0;
+  z-index: 70;
+}
+
+.register-dialog::backdrop {
+  background: transparent;
+}
+
 @media (max-width: 760px) {
   .summary-grid,
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .device-panel,
+  .alerts-panel {
+    max-height: 28rem;
   }
 }

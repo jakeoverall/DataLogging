@@ -1,5 +1,6 @@
 using System.Net;
 using DataLogging.Api.Controllers;
+using DataLogging.Api.Ingestion;
 using DataLogging.Ingestion.Models;
 using DataLogging.Ingestion.Registry;
 using DataLogging.MockHardware.Models;
@@ -23,7 +24,8 @@ public sealed class DevicesControllerCancellationTests
         var registry = new DeviceRegistry();
         var store = new InMemoryDeviceRegistrationStore();
         var registrationService = new DeviceRegistrationService(registry, store);
-        var controller = new DevicesController(registrationService, serviceProvider);
+        var connectionTracker = new WebSocketConnectionTracker();
+        var controller = new DevicesController(registrationService, serviceProvider, connectionTracker);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();

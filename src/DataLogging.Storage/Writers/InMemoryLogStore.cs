@@ -7,6 +7,7 @@ namespace DataLogging.Storage.Writers;
 
 public sealed class InMemoryLogStore : ILogWriter, ILogReader
 {
+    private const int MaxRetainedRecords = 2000;
     private readonly ConcurrentQueue<LogRecordEnvelope> _records = new();
 
     public ValueTask WriteAsync(LogRecordEnvelope record, CancellationToken cancellationToken = default)
@@ -14,6 +15,12 @@ public sealed class InMemoryLogStore : ILogWriter, ILogReader
         ArgumentNullException.ThrowIfNull(record);
 
         _records.Enqueue(record);
+
+        while (_records.Count > MaxRetainedRecords)
+        {
+            _records.TryDequeue(out _);
+        }
+
         return ValueTask.CompletedTask;
     }
 

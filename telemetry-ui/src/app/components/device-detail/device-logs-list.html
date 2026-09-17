@@ -1,0 +1,24 @@
+@if (hasLogs) {
+  <div class="pager" aria-label="Log pagination">
+    <button type="button" class="pager-button" (click)="previous.emit()" [disabled]="page === 0">Previous</button>
+    <span>Page {{ page + 1 }}</span>
+    <button type="button" class="pager-button" (click)="next.emit()" [disabled]="page >= maxPage">Next</button>
+  </div>
+
+  <ul class="log-list">
+    @for (entry of entries; track entry.id) {
+      <li>
+        <div class="log-head">
+          <span class="log-tag" [ngClass]="entry.level">{{ entry.level }}</span>
+          <strong>{{ entry.source }}</strong>
+          <time>{{ entry.timestamp | date: 'short' }}</time>
+        </div>
+        @if (entry.rawJson) {
+          <pre class="raw-json"><code>{{ entry.rawJson }}</code></pre>
+        }
+      </li>
+    }
+  </ul>
+} @else {
+  <p class="muted">No logs available for this device yet.</p>
+}

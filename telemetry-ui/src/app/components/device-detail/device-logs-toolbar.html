@@ -1,0 +1,28 @@
+<div class="toolbar">
+  <input
+    class="search-input"
+    type="search"
+    placeholder="Search source, type, payload..."
+    [value]="searchText"
+    (input)="onSearchInput($event)"
+  />
+  <div class="toolbar-actions">
+    <details class="column-picker">
+      <summary>Columns</summary>
+      <div class="column-options">
+        @for (column of exportColumns; track column.key) {
+          <label>
+            <input
+              type="checkbox"
+              [checked]="isColumnSelected(column.key)"
+              (change)="onColumnToggle(column.key, $event)"
+            />
+            <span>{{ column.label }}</span>
+          </label>
+        }
+      </div>
+    </details>
+    <button type="button" class="pager-button" (click)="requestExport('csv')" [disabled]="!canExport">Export CSV</button>
+    <button type="button" class="pager-button" (click)="requestExport('tsv')" [disabled]="!canExport">Export TSV</button>
+  </div>
+</div>

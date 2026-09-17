@@ -12,7 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddInMemoryCollection(
     EnvFileConfigurationLoader.Load(".env"));
 
-builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
@@ -36,6 +35,7 @@ var useMockData = builder.Configuration.GetValue<bool?>("Runtime:UseMockData") ?
 
 builder.Services.AddDataLoggingIngestion();
 builder.Services.AddDataLoggingStorage();
+builder.Services.AddSingleton<WebSocketConnectionTracker>();
 if (useMockData)
 {
     builder.Services.AddMockHardware(builder.Configuration.GetSection("MockHardware"), stopHostOnCompletion: false);
@@ -47,12 +47,9 @@ if (useMockData)
     builder.Services.AddHostedService<MockHardwareIngestionBridgeHostedService>();
 }
 
-var app = builder.Build();
+builder.Services.AddHostedService<WebSocketDeviceBridgeHostedService>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+var app = builder.Build();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAngularDevClient");
@@ -62,5 +59,8 @@ app.Use(async (context, next) =>
     await next();
 });
 app.MapControllers();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.Run();

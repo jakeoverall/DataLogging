@@ -29,7 +29,7 @@ public sealed class LiveLogStream
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (!await _channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            if (!await WaitToReadSafelyAsync(cancellationToken).ConfigureAwait(false))
             {
                 yield break;
             }
@@ -55,6 +55,18 @@ public sealed class LiveLogStream
 
                 yield return record;
             }
+        }
+    }
+
+    private async ValueTask<bool> WaitToReadSafelyAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
         }
     }
 }

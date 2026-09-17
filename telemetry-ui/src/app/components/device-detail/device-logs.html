@@ -1,0 +1,30 @@
+<article class="panel">
+  <div class="panel-head">
+    <h2>Recent logs</h2>
+    <div class="stream-status">
+      <span class="stream-badge" [ngClass]="streamState()">{{ streamStateLabel() }}</span>
+      <small>{{ streamAgeLabel() }}</small>
+    </div>
+  </div>
+
+  <app-device-logs-toolbar
+    [searchText]="searchText()"
+    [exportColumns]="exportColumns"
+    [selectedColumns]="selectedColumns()"
+    [canExport]="canExport()"
+    (searchChanged)="onSearchChanged($event)"
+    (columnToggled)="onColumnToggled($event)"
+    (exportRequested)="exportLogs($event)"
+  />
+
+  <p class="result-info">Showing {{ filteredLogs().length }} of {{ logs().length }} logs.</p>
+
+  <app-device-logs-list
+    [entries]="pagedLogs()"
+    [hasLogs]="logs().length > 0"
+    [page]="page()"
+    [maxPage]="maxPage()"
+    (previous)="previousPage()"
+    (next)="nextPage()"
+  />
+</article>

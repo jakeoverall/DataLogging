@@ -1,4 +1,5 @@
 using DataLogging.Api.Infrastructure;
+using DataLogging.Api.Ingestion;
 using DataLogging.Api.Models;
 using DataLogging.Ingestion.Models;
 using DataLogging.Ingestion.Registry;
@@ -15,16 +16,20 @@ public sealed class DevicesController : ControllerBase
 
     private readonly DeviceRegistrationService _deviceRegistrationService;
     private readonly IServiceProvider _services;
+    private readonly WebSocketConnectionTracker _webSocketConnectionTracker;
 
     public DevicesController(
         DeviceRegistrationService deviceRegistrationService,
-        IServiceProvider services)
+        IServiceProvider services,
+        WebSocketConnectionTracker webSocketConnectionTracker)
     {
         ArgumentNullException.ThrowIfNull(deviceRegistrationService);
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(webSocketConnectionTracker);
 
         _deviceRegistrationService = deviceRegistrationService;
         _services = services;
+        _webSocketConnectionTracker = webSocketConnectionTracker;
     }
 
     [HttpGet]
@@ -115,12 +120,15 @@ public sealed class DevicesController : ControllerBase
             .ToArray();
     }
 
-    private static DeviceSummaryResponse ToSummary(
+    private DeviceSummaryResponse ToSummary(
         DeviceDefinition definition,
         DataLogging.MockHardware.Models.MockDeviceStateSnapshot? state,
         DateTimeOffset now)
     {
-        var isOnline = definition.Enabled && (state?.IsOnline ?? false);
+        var websocketIsOnline = definition.Protocol == DataLogging.Ingestion.Models.DeviceProtocol.WebSocket
+            && definition.Enabled
+            && _webSocketConnectionTracker.IsConnected(definition.DeviceId);
+        var isOnline = definition.Enabled && (state?.IsOnline ?? websocketIsOnline);
         var hasDrops = (state?.MessagesDropped ?? 0) > 0;
         var status = !definition.Enabled
             ? "offline"
@@ -128,7 +136,7 @@ public sealed class DevicesController : ControllerBase
                 ? (hasDrops ? "warning" : "online")
                 : "offline";
 
-        var health = CalculateHealth(definition.Enabled, state);
+        var health = CalculateHealth(definition.Enabled, state, websocketIsOnline);
 
         return new DeviceSummaryResponse
         {
@@ -157,7 +165,8 @@ public sealed class DevicesController : ControllerBase
 
     private static int CalculateHealth(
         bool enabled,
-        DataLogging.MockHardware.Models.MockDeviceStateSnapshot? state)
+        DataLogging.MockHardware.Models.MockDeviceStateSnapshot? state,
+        bool websocketIsOnline = false)
     {
         if (!enabled)
         {
@@ -166,10 +175,10 @@ public sealed class DevicesController : ControllerBase
 
         if (state is null)
         {
-            return 70;
+            return websocketIsOnline ? 100 : 70;
         }
 
-        if (!state.IsOnline)
+        if (!state.IsOnline && !websocketIsOnline)
         {
             return 25;
         }

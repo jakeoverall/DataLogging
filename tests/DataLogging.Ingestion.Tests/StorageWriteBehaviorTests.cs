@@ -95,4 +95,67 @@ public sealed class StorageWriteBehaviorTests
             }
         }
     }
+
+    [Fact]
+    public async Task NdjsonLogStore_RotatesAndPrunes_WhenFileExceedsConfiguredSize()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"datalogging-rotation-{Guid.NewGuid():N}");
+        var tempFile = Path.Combine(tempDirectory, "logs.ndjson");
+        Directory.CreateDirectory(tempDirectory);
+
+        try
+        {
+            var options = Options.Create(new StorageOptions
+            {
+                Provider = "file",
+                FilePath = tempFile,
+                MaxFileSizeBytes = 800,
+                MaxRetainedFiles = 2
+            });
+
+            var store = new NdjsonLogStore(options);
+            for (var index = 0; index < 8; index++)
+            {
+                var record = new LogRecordEnvelope
+                {
+                    Metadata = new LogRecordMetadata
+                    {
+                        RecordId = Guid.NewGuid(),
+                        VehicleId = "vehicle-42",
+                        DeviceId = "device-001",
+                        Source = "mock-ros2",
+                        DataType = "imu",
+                        Schema = "imu.v1",
+                        RecordedTimestamp = DateTimeOffset.UtcNow,
+                        SequenceNumber = (ulong)index,
+                        Kind = LogRecordKind.Telemetry,
+                        Priority = LogPriority.Normal
+                    },
+                    Payload = JsonSerializer.SerializeToUtf8Bytes(new
+                    {
+                        index,
+                        message = new string('x', 180)
+                    })
+                };
+
+                await store.WriteAsync(record);
+            }
+
+            Assert.True(File.Exists(tempFile));
+
+            var rotated = Directory.EnumerateFiles(tempDirectory, "logs.*.ndjson").ToArray();
+            Assert.NotEmpty(rotated);
+            Assert.True(rotated.Length <= 2, $"Expected at most 2 rotated files but found {rotated.Length}.");
+
+            var currentLength = new FileInfo(tempFile).Length;
+            Assert.True(currentLength <= 800, $"Expected active log file <= 800 bytes but found {currentLength}.");
+        }
+        finally
+        {
+            if (Directory.Exists(tempDirectory))
+            {
+                Directory.Delete(tempDirectory, recursive: true);
+            }
+        }
+    }
 }

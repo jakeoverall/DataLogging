@@ -1,15 +1,15 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { TelemetryApiService } from '../../services/telemetry-api.service';
+import { DeviceFormComponent, type DeviceFormValue } from '../device-form/device-form';
 import type { DeviceAlert, DeviceSummary } from '../../models/device';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, DeviceFormComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'
 })
@@ -20,14 +20,9 @@ export class DashboardComponent implements OnDestroy {
   protected readonly devices = signal<DeviceSummary[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly alerts = signal<DeviceAlert[]>([]);
+  protected readonly isRegisterDialogOpen = signal(false);
   protected readonly protocolOptions = ['Ethernet', 'ROS2', 'CANOpen', 'WebSocket'];
-  protected form = {
-    name: '',
-    deviceType: 'Custom gateway',
-    protocol: 'Ethernet',
-    address: '10.12.0.90',
-    port: 9000
-  };
+  protected form = this.createDefaultForm();
 
   protected readonly onlineCount = computed(() => this.devices().filter((device) => device.status === 'online').length);
   protected readonly warningCount = computed(() => this.devices().filter((device) => device.status === 'warning').length);
@@ -43,24 +38,43 @@ export class DashboardComponent implements OnDestroy {
     this.loadDevices();
   }
 
-  protected registerDevice() {
-    const { name, deviceType, protocol, address, port } = this.form;
-    const deviceId = name.trim().toLowerCase().replace(/\s+/g, '-');
+  protected openRegisterDialog() {
+    this.form = this.createDefaultForm();
+    this.isRegisterDialogOpen.set(true);
+  }
 
-    if (!deviceId) {
+  protected closeRegisterDialog() {
+    this.isRegisterDialogOpen.set(false);
+  }
+
+  protected registerDevice(formValue: DeviceFormValue) {
+    const { deviceId, name, deviceType, protocol, address, port } = formValue;
+    const routeDeviceId = this.toDeviceId(deviceId || name);
+
+    if (!routeDeviceId) {
       return;
     }
 
-    this.api.registerDevice(deviceId, { name, deviceType, protocol, address, port, enabled: true }).subscribe(() => {
+    this.api.registerDevice(routeDeviceId, { name, deviceType, protocol, address, port, enabled: true }).subscribe(() => {
       this.loadDevices();
-      this.form = {
-        name: '',
-        deviceType: 'Custom gateway',
-        protocol: 'Ethernet',
-        address: '10.12.0.90',
-        port: 9000
-      };
+      this.isRegisterDialogOpen.set(false);
+      this.form = this.createDefaultForm();
     });
+  }
+
+  private createDefaultForm(): DeviceFormValue {
+    return {
+      deviceId: '',
+      name: '',
+      deviceType: 'Custom gateway',
+      protocol: 'Ethernet',
+      address: '10.12.0.90',
+      port: 9000
+    };
+  }
+
+  private toDeviceId(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   }
 
   private loadDevices() {

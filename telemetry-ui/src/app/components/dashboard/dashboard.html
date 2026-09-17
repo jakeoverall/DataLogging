@@ -34,7 +34,10 @@
     <section class="panel device-panel">
       <div class="panel-header">
         <h2>Connected devices</h2>
-        <span class="soft-badge">{{ devices().length }} total</span>
+        <div class="panel-actions">
+          <span class="soft-badge">{{ devices().length }} total</span>
+          <button type="button" class="soft-badge pill-button" (click)="openRegisterDialog()">Add device</button>
+        </div>
       </div>
 
       @if (isLoading()) {
@@ -73,34 +76,23 @@
         </li>
         }
       </ul>
-      <form class="register-form" (ngSubmit)="registerDevice()">
-        <h3>Register device</h3>
-        <label>
-          <span>Name</span>
-          <input [(ngModel)]="form.name" name="name" placeholder="e.g. Nav Camera" />
-        </label>
-        <label>
-          <span>Type</span>
-          <input [(ngModel)]="form.deviceType" name="deviceType" placeholder="Custom gateway (IP address:port)" />
-        </label>
-        <label>
-          <span>Protocol</span>
-          <select [(ngModel)]="form.protocol" name="protocol">
-            @for (option of protocolOptions; track option) {
-              <option [value]="option">{{ option }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          <span>Address</span>
-          <input [(ngModel)]="form.address" name="address" placeholder="10.12.0.90" />
-        </label>
-        <label>
-          <span>Port</span>
-          <input type="number" [(ngModel)]="form.port" name="port" min="1" max="65535" />
-        </label>
-        <button type="submit" class="primary-button">Add device</button>
-      </form>
     </aside>
   </div>
+
+  @if (isRegisterDialogOpen()) {
+  <div class="dialog-backdrop" (click)="closeRegisterDialog()"></div>
+  }
+
+  <dialog class="register-dialog" [open]="isRegisterDialogOpen()" (keydown.escape)="closeRegisterDialog()">
+    <app-device-form
+      title="Register device"
+      submitLabel="Add device"
+      [showDeviceId]="true"
+      [showCancel]="true"
+      [protocolOptions]="protocolOptions"
+      [initialValue]="form"
+      (cancel)="closeRegisterDialog()"
+      (formSubmit)="registerDevice($event)"
+    />
+  </dialog>
 </section>

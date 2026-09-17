@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { filter, map, switchMap } from 'rxjs';
 import { TelemetryApiService } from '../../services/telemetry-api.service';
+import { DeviceFormComponent, type DeviceFormValue } from '../device-form/device-form';
 import type { DeviceSummary } from '../../models/device';
 
 const PROTOCOL_OPTIONS = ['Ethernet', 'ROS2', 'CANOpen', 'WebSocket'];
@@ -12,34 +12,21 @@ const PROTOCOL_OPTIONS = ['Ethernet', 'ROS2', 'CANOpen', 'WebSocket'];
 @Component({
   selector: 'app-device-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, DeviceFormComponent],
   template: `
     <article class="panel settings-panel">
       @if (device(); as currentDevice) {
         <h2>Device settings</h2>
-        <div class="settings-grid">
-          <label>
-            <span>Name</span>
-            <input type="text" [(ngModel)]="form.name" name="name" />
-          </label>
-          <label>
-            <span>Protocol</span>
-            <select [(ngModel)]="form.protocol" name="protocol">
-              @for (option of protocolOptions; track option) {
-                <option [value]="option">{{ option }}</option>
-              }
-            </select>
-          </label>
-          <label>
-            <span>Address</span>
-            <input type="text" [(ngModel)]="form.address" name="address" />
-          </label>
-          <label>
-            <span>Port</span>
-            <input type="number" [(ngModel)]="form.port" name="port" />
-          </label>
-        </div>
-        <button type="button" class="primary-button" (click)="saveChanges()">Save changes</button>
+        <app-device-form
+          title="Edit device"
+          submitLabel="Save changes"
+          [showCancel]="false"
+          [showDeviceId]="false"
+          [protocolOptions]="protocolOptions"
+          [initialValue]="form"
+          (formSubmit)="saveChanges($event)"
+        />
+        <button type="button" class="danger-button" (click)="removeDevice()">Remove device</button>
       } @else {
         <p class="muted">Loading settings…</p>
       }
@@ -49,21 +36,34 @@ const PROTOCOL_OPTIONS = ['Ethernet', 'ROS2', 'CANOpen', 'WebSocket'];
     `:host { display: block; }
      .panel { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 16px; padding: 1rem 1.25rem; }
      h2 { margin: 0 0 1rem; color: white; }
-     .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-     label { display: flex; flex-direction: column; gap: 0.45rem; color: #e2e8f0; }
-     input { background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 10px; color: white; padding: 0.8rem 0.9rem; }
-     .primary-button { background: linear-gradient(135deg, #38bdf8, #8b5cf6); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; padding: 0.8rem 1rem; margin-top: 1rem; }
+     .danger-button {
+       margin-top: 0.9rem;
+       background: rgba(239, 68, 68, 0.22);
+       color: #fecaca;
+       border: 1px solid rgba(248, 113, 113, 0.35);
+       border-radius: 10px;
+       cursor: pointer;
+       font-weight: 600;
+       padding: 0.8rem 1rem;
+     }
      .muted { color: #b9c3d5; }
-     @media (max-width: 760px) { .settings-grid { grid-template-columns: 1fr; } }
     `
   ]
 })
 export class DeviceSettingsComponent {
   private readonly api = inject(TelemetryApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   protected readonly device = signal<DeviceSummary | undefined>(undefined);
   protected readonly protocolOptions = PROTOCOL_OPTIONS;
-  protected form = { name: '', protocol: 'Ethernet', address: '127.0.0.1', port: 9000 };
+  protected form: DeviceFormValue = {
+    deviceId: '',
+    name: '',
+    deviceType: 'Custom gateway',
+    protocol: 'Ethernet',
+    address: '127.0.0.1',
+    port: 9000
+  };
 
   constructor() {
     const destroyRef = inject(DestroyRef);
@@ -81,7 +81,9 @@ export class DeviceSettingsComponent {
         this.device.set(device);
         if (device) {
           this.form = {
+            deviceId: device.id,
             name: device.name,
+            deviceType: device.deviceType,
             protocol: device.protocol,
             address: device.address,
             port: device.port
@@ -90,26 +92,50 @@ export class DeviceSettingsComponent {
       });
   }
 
-  protected saveChanges() {
+  protected saveChanges(formValue: DeviceFormValue) {
     const currentDevice = this.device();
     if (!currentDevice) {
       return;
     }
 
-    this.api.registerDevice(currentDevice.id, {
+    this.api.updateDevice(currentDevice.id, {
       ...currentDevice,
-      name: this.form.name,
-      protocol: this.form.protocol,
-      address: this.form.address,
-      port: Number(this.form.port) || currentDevice.port
+      name: formValue.name,
+      deviceType: formValue.deviceType,
+      protocol: formValue.protocol,
+      address: formValue.address,
+      port: Number(formValue.port) || currentDevice.port
     }).subscribe(() => {
       this.device.set({
         ...currentDevice,
-        name: this.form.name,
-        protocol: this.form.protocol,
-        address: this.form.address,
-        port: Number(this.form.port) || currentDevice.port
+        name: formValue.name,
+        deviceType: formValue.deviceType,
+        protocol: formValue.protocol,
+        address: formValue.address,
+        port: Number(formValue.port) || currentDevice.port
       });
+      this.form = {
+        ...formValue,
+        deviceId: currentDevice.id
+      };
+    });
+  }
+
+  protected removeDevice() {
+    const currentDevice = this.device();
+    if (!currentDevice) {
+      return;
+    }
+
+    const confirmed = confirm(`Remove device "${currentDevice.name}" (${currentDevice.id})?`);
+    if (!confirmed) {
+      return;
+    }
+
+    this.api.removeDevice(currentDevice.id).subscribe((removed) => {
+      if (removed) {
+        this.router.navigateByUrl('/dashboard');
+      }
     });
   }
 }

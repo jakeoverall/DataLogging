@@ -3,6 +3,16 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import type { DeviceAlert, DeviceLogEntry, DeviceSummary, RuntimeModeResponse } from '../models/device';
 
+const MAX_LOG_EVENT_BATCH = 20;
+const LOG_STREAM_RECONNECT_MS = 1000;
+
+export type DeviceLogStreamState = 'connecting' | 'live' | 'reconnecting';
+
+export interface DeviceLogStreamUpdate {
+  state: DeviceLogStreamState;
+  entries: DeviceLogEntry[];
+}
+
 const normalizeProtocol = (value: unknown): string => {
   if (typeof value === 'string') {
     return value;
@@ -42,6 +52,14 @@ const normalizeProtocolValue = (value: unknown): number => {
     default:
       return 2;
   }
+};
+
+const toStringRecord = (value: Record<string, unknown>): Record<string, string> => {
+  const entries = Object.entries(value)
+    .filter(([, entryValue]) => entryValue !== undefined && entryValue !== null)
+    .map(([key, entryValue]) => [key, String(entryValue)] as const);
+
+  return Object.fromEntries(entries);
 };
 
 const normalizeDevice = (item: Partial<DeviceSummary> & { deviceId?: string }): DeviceSummary => ({
@@ -205,32 +223,82 @@ export class TelemetryApiService {
 
     return this.http.get<any[]>(`${this.baseUrl}/api/logs?deviceId=${encodeURIComponent(deviceId)}&limit=${limit}`).pipe(
       map((rows) =>
-        rows.map((row, index) => {
-          const metadata = row.metadata ?? {};
-          const payloadBase64 = row.payloadBase64 ?? '';
-          const payloadText = row.payloadText ?? (
-            payloadBase64 ? this.decodeBase64(payloadBase64) : 'No payload preview available.'
-          );
-
-          const level: 'info' | 'warn' | 'error' = metadata.Priority === 'High' || metadata.Priority === 'high'
-            ? 'error'
-            : metadata.Priority === 'Medium' || metadata.Priority === 'medium'
-              ? 'warn'
-              : 'info';
-
-          return {
-            id: metadata.RecordId ?? `${deviceId}-${index}`,
-            deviceId: metadata.DeviceId ?? deviceId,
-            source: metadata.Source ?? 'unknown',
-            dataType: metadata.DataType ?? 'telemetry',
-            timestamp: metadata.RecordedTimestamp ?? new Date().toISOString(),
-            level,
-            payloadText
-          } satisfies DeviceLogEntry;
-        }) as DeviceLogEntry[]
+        rows.map((row, index) => this.toDeviceLogEntry(row, deviceId, index)).filter((entry) => !!entry) as DeviceLogEntry[]
       ),
       catchError(() => of(fallback))
     );
+  }
+
+  streamLogs(deviceId: string, limit = MAX_LOG_EVENT_BATCH): Observable<DeviceLogStreamUpdate> {
+    return new Observable<DeviceLogStreamUpdate>((subscriber) => {
+      let source: EventSource | null = null;
+      let disposed = false;
+      let reconnectHandle: ReturnType<typeof setTimeout> | null = null;
+
+      const connect = () => {
+        if (disposed) {
+          return;
+        }
+
+        subscriber.next({ state: 'connecting', entries: [] });
+        source = new EventSource(
+          `${this.baseUrl}/api/logs/stream?deviceId=${encodeURIComponent(deviceId)}&batchSize=${limit}&flushIntervalMs=250`
+        );
+
+        const handleConnected = () => {
+          subscriber.next({ state: 'live', entries: [] });
+        };
+
+        const handleLogBatch = (event: Event) => {
+          const payload = this.parseLiveLogEventBatch((event as MessageEvent<string>).data, deviceId);
+          if (payload.length === 0) {
+            return;
+          }
+
+          subscriber.next({ state: 'live', entries: payload.slice(0, limit) });
+        };
+
+        const handleError = () => {
+          if (disposed) {
+            return;
+          }
+
+          subscriber.next({ state: 'reconnecting', entries: [] });
+
+          source?.removeEventListener('connected', handleConnected as EventListener);
+          source?.removeEventListener('logs', handleLogBatch as EventListener);
+          source?.close();
+          source = null;
+
+          if (reconnectHandle !== null) {
+            clearTimeout(reconnectHandle);
+          }
+
+          reconnectHandle = setTimeout(() => {
+            reconnectHandle = null;
+            connect();
+          }, LOG_STREAM_RECONNECT_MS);
+        };
+
+        source.addEventListener('connected', handleConnected as EventListener);
+        source.addEventListener('logs', handleLogBatch as EventListener);
+        source.onerror = handleError;
+      };
+
+      connect();
+
+      return () => {
+        disposed = true;
+
+        if (reconnectHandle !== null) {
+          clearTimeout(reconnectHandle);
+          reconnectHandle = null;
+        }
+
+        source?.close();
+        source = null;
+      };
+    });
   }
 
   getAlerts(): Observable<DeviceAlert[]> {
@@ -272,6 +340,56 @@ export class TelemetryApiService {
     );
   }
 
+  private toDeviceLogEntry(row: any, deviceId: string, index: number): DeviceLogEntry | null {
+    const metadata = row?.metadata ?? row ?? {};
+    const payloadBase64 = row?.payloadBase64 ?? '';
+    const payloadText = row?.payloadText ?? (
+      payloadBase64 ? this.decodeBase64(payloadBase64) : 'No payload preview available.'
+    );
+
+    const priority = metadata.Priority ?? metadata.priority ?? 'Normal';
+    const level: 'info' | 'warn' | 'error' = priority === 'High' || priority === 'high'
+      ? 'error'
+      : priority === 'Medium' || priority === 'medium'
+        ? 'warn'
+        : 'info';
+
+    const timestamp =
+      metadata.RecordedTimestamp
+      ?? metadata.recordedTimestamp
+      ?? row?.RecordedTimestamp
+      ?? row?.timestamp
+      ?? new Date().toISOString();
+
+    return {
+      id: metadata.RecordId ?? metadata.recordId ?? row?.RecordId ?? row?.id ?? `${deviceId}-${index}`,
+      deviceId: metadata.DeviceId ?? metadata.deviceId ?? row?.DeviceId ?? row?.deviceId ?? deviceId,
+      source: metadata.Source ?? metadata.source ?? row?.Source ?? row?.source ?? 'unknown',
+      dataType: metadata.DataType ?? metadata.dataType ?? row?.DataType ?? row?.dataType ?? 'telemetry',
+      timestamp,
+      level,
+      payloadText
+    } satisfies DeviceLogEntry;
+  }
+
+  private parseLiveLogEventBatch(value: string, deviceId: string): DeviceLogEntry[] {
+    try {
+      const parsed = JSON.parse(value) as {
+        items?: any[];
+      };
+
+      if (!parsed || !Array.isArray(parsed.items)) {
+        return [];
+      }
+
+      return parsed.items
+        .map((item, index) => this.toDeviceLogEntry(item, deviceId, index))
+        .filter((entry) => !!entry) as DeviceLogEntry[];
+    } catch {
+      return [];
+    }
+  }
+
   private decodeBase64(value: string): string {
     try {
       return atob(value);
@@ -294,20 +412,37 @@ export class TelemetryApiService {
   }
 
   registerDevice(deviceId: string, payload: Partial<DeviceSummary>) {
+    const port = String(payload.port ?? 9000);
     const requestBody = {
       name: payload.name ?? deviceId,
       deviceType: payload.deviceType ?? 'Custom',
       protocol: normalizeProtocolValue(payload.protocol ?? 'Ethernet'),
       address: payload.address ?? '127.0.0.1',
-      port: String(payload.port ?? 9000),
+      port,
       enabled: payload.enabled ?? true,
-      properties: {
-        ...(payload as Record<string, unknown>)
-      }
+      properties: toStringRecord({
+        name: payload.name ?? deviceId,
+        deviceType: payload.deviceType ?? 'Custom',
+        protocol: normalizeProtocol(payload.protocol ?? 'Ethernet'),
+        address: payload.address ?? '127.0.0.1',
+        port,
+        enabled: payload.enabled ?? true
+      })
     };
 
     return this.http.put(`${this.baseUrl}/api/devices/${encodeURIComponent(deviceId)}`, requestBody).pipe(
       catchError(() => of(true))
+    );
+  }
+
+  updateDevice(deviceId: string, payload: Partial<DeviceSummary>) {
+    return this.registerDevice(deviceId, payload);
+  }
+
+  removeDevice(deviceId: string): Observable<boolean> {
+    return this.http.delete(`${this.baseUrl}/api/devices/${encodeURIComponent(deviceId)}`).pipe(
+      map(() => true),
+      catchError(() => of(false))
     );
   }
 }
