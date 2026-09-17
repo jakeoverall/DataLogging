@@ -29,10 +29,15 @@
     "deviceType": "Safety Scanner",
     "protocol": 2,
     "address": "10.0.0.122",
-    "port": null,
-    "enabled": true,
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "address": "10.0.0.122"
+      "name": "Safety Scanner",
+      "deviceType": "Safety Scanner",
+      "protocol": "Ethernet",
+      "address": "10.0.0.122",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -40,11 +45,16 @@
     "name": "Wheel Encoder",
     "deviceType": "Wheel Encoder",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/wheel_encoder"
+      "name": "Wheel Encoder",
+      "deviceType": "Wheel Encoder",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -52,11 +62,16 @@
     "name": "Steering Controller",
     "deviceType": "Steering Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "5"
+      "name": "Steering Controller",
+      "deviceType": "Steering Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -65,10 +80,15 @@
     "deviceType": "Industrial Sensor",
     "protocol": 2,
     "address": "10.0.0.135",
-    "port": null,
-    "enabled": true,
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "address": "10.0.0.135"
+      "name": "Industrial Sensor",
+      "deviceType": "Industrial Sensor",
+      "protocol": "Ethernet",
+      "address": "10.0.0.135",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -76,11 +96,16 @@
     "name": "Battery Monitor",
     "deviceType": "Battery Monitor",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/battery"
+      "name": "Battery Monitor",
+      "deviceType": "Battery Monitor",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -88,11 +113,16 @@
     "name": "Fork Controller",
     "deviceType": "Fork Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "6"
+      "name": "Fork Controller",
+      "deviceType": "Fork Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -101,10 +131,15 @@
     "deviceType": "Motor Controller",
     "protocol": 2,
     "address": "10.0.0.148",
-    "port": null,
-    "enabled": true,
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "address": "10.0.0.148"
+      "name": "Motor Controller",
+      "deviceType": "Motor Controller",
+      "protocol": "Ethernet",
+      "address": "10.0.0.148",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -112,11 +147,16 @@
     "name": "Fork Position",
     "deviceType": "Fork Position",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/fork_position"
+      "name": "Fork Position",
+      "deviceType": "Fork Position",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -124,11 +164,16 @@
     "name": "LiDAR",
     "deviceType": "LiDAR",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/lidar"
+      "name": "LiDAR",
+      "deviceType": "LiDAR",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -136,11 +181,16 @@
     "name": "Camera",
     "deviceType": "Camera",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/camera"
+      "name": "Camera",
+      "deviceType": "Camera",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -148,11 +198,16 @@
     "name": "Battery Controller",
     "deviceType": "Battery Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "7"
+      "name": "Battery Controller",
+      "deviceType": "Battery Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -160,11 +215,16 @@
     "name": "IMU",
     "deviceType": "IMU",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/imu"
+      "name": "IMU",
+      "deviceType": "IMU",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -172,11 +232,16 @@
     "name": "Drive Motor Controller",
     "deviceType": "Drive Motor Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "4"
+      "name": "Drive Motor Controller",
+      "deviceType": "Drive Motor Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -185,10 +250,15 @@
     "deviceType": "Safety Scanner",
     "protocol": 2,
     "address": "10.0.0.135",
-    "port": null,
-    "enabled": true,
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "address": "10.0.0.135"
+      "name": "Safety Scanner",
+      "deviceType": "Safety Scanner",
+      "protocol": "Ethernet",
+      "address": "10.0.0.135",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -196,11 +266,16 @@
     "name": "Wheel Encoder",
     "deviceType": "Wheel Encoder",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/wheel_encoder"
+      "name": "Wheel Encoder",
+      "deviceType": "Wheel Encoder",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -208,11 +283,16 @@
     "name": "Steering Controller",
     "deviceType": "Steering Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "5"
+      "name": "Steering Controller",
+      "deviceType": "Steering Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -221,10 +301,15 @@
     "deviceType": "Industrial Sensor",
     "protocol": 2,
     "address": "10.0.0.148",
-    "port": null,
-    "enabled": true,
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "address": "10.0.0.148"
+      "name": "Industrial Sensor",
+      "deviceType": "Industrial Sensor",
+      "protocol": "Ethernet",
+      "address": "10.0.0.148",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -232,11 +317,16 @@
     "name": "Battery Monitor",
     "deviceType": "Battery Monitor",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/battery"
+      "name": "Battery Monitor",
+      "deviceType": "Battery Monitor",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -244,11 +334,16 @@
     "name": "Fork Controller",
     "deviceType": "Fork Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "6"
+      "name": "Fork Controller",
+      "deviceType": "Fork Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -257,10 +352,15 @@
     "deviceType": "Motor Controller",
     "protocol": 2,
     "address": "10.0.0.161",
-    "port": null,
-    "enabled": true,
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "address": "10.0.0.161"
+      "name": "Motor Controller",
+      "deviceType": "Motor Controller",
+      "protocol": "Ethernet",
+      "address": "10.0.0.161",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -268,11 +368,16 @@
     "name": "Fork Position",
     "deviceType": "Fork Position",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/fork_position"
+      "name": "Fork Position",
+      "deviceType": "Fork Position",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -280,11 +385,16 @@
     "name": "LiDAR",
     "deviceType": "LiDAR",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/lidar"
+      "name": "LiDAR",
+      "deviceType": "LiDAR",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -292,11 +402,16 @@
     "name": "Camera",
     "deviceType": "Camera",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/camera"
+      "name": "Camera",
+      "deviceType": "Camera",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -304,11 +419,16 @@
     "name": "Battery Controller",
     "deviceType": "Battery Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "7"
+      "name": "Battery Controller",
+      "deviceType": "Battery Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -316,11 +436,16 @@
     "name": "IMU",
     "deviceType": "IMU",
     "protocol": 0,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "topic": "/topic/imu"
+      "name": "IMU",
+      "deviceType": "IMU",
+      "protocol": "ROS2",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -328,11 +453,16 @@
     "name": "Drive Motor Controller",
     "deviceType": "Drive Motor Controller",
     "protocol": 1,
-    "address": null,
-    "port": null,
-    "enabled": true,
+    "address": "127.0.0.1",
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "nodeId": "4"
+      "name": "Drive Motor Controller",
+      "deviceType": "Drive Motor Controller",
+      "protocol": "CANOpen",
+      "address": "127.0.0.1",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {
@@ -341,10 +471,15 @@
     "deviceType": "Safety Scanner",
     "protocol": 2,
     "address": "10.0.0.148",
-    "port": null,
-    "enabled": true,
+    "port": "9000",
+    "enabled": false,
     "properties": {
-      "address": "10.0.0.148"
+      "name": "Safety Scanner",
+      "deviceType": "Safety Scanner",
+      "protocol": "Ethernet",
+      "address": "10.0.0.148",
+      "port": "9000",
+      "enabled": "false"
     }
   },
   {

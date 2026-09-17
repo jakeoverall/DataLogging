@@ -9,6 +9,7 @@ import {
 } from '../../services/telemetry-api.service';
 import type { DeviceLogEntry } from '../../models/device';
 import { EXPORT_COLUMNS, type ExportColumnKey, type ExportFormat } from './device-logs.models';
+import { buildDelimitedLogExport, getLogParsedJsonSource } from '../../utils/log-export';
 
 @Injectable()
 export class DeviceLogsFacade {
@@ -34,6 +35,7 @@ export class DeviceLogsFacade {
     payloadText: true,
     rawJson: false
   });
+  readonly expandParsedJsonColumns = signal(false);
   readonly streamState = signal<DeviceLogStreamState>('connecting');
 
   readonly streamStateLabel = computed(() => {
@@ -195,6 +197,10 @@ export class DeviceLogsFacade {
     }));
   }
 
+  onExpandParsedJsonColumnsToggled(checked: boolean) {
+    this.expandParsedJsonColumns.set(checked);
+  }
+
   exportLogs(format: ExportFormat) {
     const columns = this.activeExportColumns();
     const rows = this.filteredLogs();
@@ -202,17 +208,11 @@ export class DeviceLogsFacade {
       return;
     }
 
-    const delimiter = format === 'csv' ? ',' : '\t';
-    const header = columns.map((column) => this.escapeCell(column.label, delimiter)).join(delimiter);
-    const body = rows
-      .map((row) =>
-        columns
-          .map((column) => this.escapeCell(this.toColumnValue(row, column.key), delimiter))
-          .join(delimiter)
-      )
-      .join('\n');
-
-    const content = `${header}\n${body}`;
+    const content = buildDelimitedLogExport(rows, columns, format, {
+      expandParsedJsonColumns: format === 'csv' && this.expandParsedJsonColumns(),
+      getColumnValue: (entry, column) => this.toColumnValue(entry, column),
+      getParsedJsonSource: (entry) => getLogParsedJsonSource(entry)
+    });
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

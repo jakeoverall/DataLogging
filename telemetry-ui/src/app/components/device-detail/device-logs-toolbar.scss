@@ -16,6 +16,15 @@
   gap: 0.5rem;
 }
 
+.export-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #dbeafe;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
 .search-input {
   min-width: 240px;
   flex: 1;

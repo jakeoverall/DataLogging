@@ -1,7 +1,9 @@
 using System.Text.Json;
+using DataLogging.Api.Controllers;
 using DataLogging.Core.Models;
 using DataLogging.Storage.Configuration;
 using DataLogging.Storage.Writers;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -149,6 +151,47 @@ public sealed class StorageWriteBehaviorTests
 
             var currentLength = new FileInfo(tempFile).Length;
             Assert.True(currentLength <= 800, $"Expected active log file <= 800 bytes but found {currentLength}.");
+        }
+        finally
+        {
+            if (Directory.Exists(tempDirectory))
+            {
+                Directory.Delete(tempDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void LogsController_ReturnsCurrentAndRotatedFileInventory()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"datalogging-files-{Guid.NewGuid():N}");
+        var currentFile = Path.Combine(tempDirectory, "logs.ndjson");
+        var rotatedFile = Path.Combine(tempDirectory, "logs.20260917000100000.ndjson");
+        Directory.CreateDirectory(tempDirectory);
+
+        try
+        {
+            File.WriteAllText(currentFile, "current\n");
+            File.WriteAllText(rotatedFile, "rotated\n");
+
+            var controller = new LogsController(
+                new InMemoryLogStore(),
+                new LiveLogStream(),
+                Options.Create(new DataLogging.Storage.Configuration.StorageOptions
+                {
+                    Provider = "file",
+                    FilePath = currentFile
+                }));
+
+            var result = controller.GetLogFiles();
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var files = Assert.IsType<LogFileDescriptor[]>(ok.Value);
+
+            Assert.Equal(2, files.Length);
+            Assert.True(files[0].IsCurrent);
+            Assert.Equal(Path.GetFullPath(currentFile), files[0].Path);
+            Assert.Equal(Path.GetFullPath(rotatedFile), files[1].Path);
         }
         finally
         {

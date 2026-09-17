@@ -7,6 +7,10 @@
     (input)="onSearchInput($event)"
   />
   <div class="toolbar-actions">
+    <label class="export-toggle">
+      <input type="checkbox" [checked]="expandParsedJsonColumns" (change)="onExpandParsedJsonColumnsToggle($event)" />
+      <span>Expand JSON columns</span>
+    </label>
     <details class="column-picker">
       <summary>Columns</summary>
       <div class="column-options">

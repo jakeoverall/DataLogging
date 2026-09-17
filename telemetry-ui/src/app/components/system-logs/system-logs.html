@@ -1,0 +1,133 @@
+<section class="logs-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Operations</p>
+      <h1>System logs</h1>
+      <small>Review telemetry records across the entire fleet and inspect the persisted log files.</small>
+    </div>
+    <button type="button" class="primary-button" (click)="refresh()" [disabled]="isLoading()">
+      {{ isLoading() ? 'Refreshing...' : 'Refresh' }}
+    </button>
+  </header>
+
+  <article class="panel">
+    <div class="panel-head">
+      <h2>{{ activeTab() === 'records' ? 'All records' : 'Log files' }}</h2>
+      <span class="soft-badge">
+        @if (activeTab() === 'records') {
+          {{ filteredLogs().length }} logs · {{ distinctDeviceCount() }} devices
+        } @else {
+          {{ filteredFiles().length }} files
+        }
+      </span>
+    </div>
+
+    <div class="tab-row" role="tablist" aria-label="System logs views">
+      <button type="button" class="tab-button" [class.active]="activeTab() === 'records'" (click)="setActiveTab('records')">Records</button>
+      <button type="button" class="tab-button" [class.active]="activeTab() === 'files'" (click)="setActiveTab('files')">Files</button>
+    </div>
+
+    @if (activeTab() === 'records') {
+      <div class="toolbar">
+        <input
+          class="search-input"
+          type="search"
+          placeholder="Search by device, source, type, payload..."
+          [value]="searchText()"
+          (input)="onSearchInput($event)"
+        />
+        <div class="toolbar-actions">
+          <label class="export-toggle">
+            <input type="checkbox" [checked]="expandParsedJsonColumns()" (change)="onExpandParsedJsonColumnsToggled($event)" />
+            <span>Expand JSON columns</span>
+          </label>
+          <details class="column-picker">
+            <summary>Columns</summary>
+            <div class="column-options">
+              @for (column of exportColumns; track column.key) {
+                <label>
+                  <input
+                    type="checkbox"
+                    [checked]="isColumnSelected(column.key)"
+                    (change)="onColumnToggle(column.key, $event)"
+                  />
+                  <span>{{ column.label }}</span>
+                </label>
+              }
+            </div>
+          </details>
+          <button type="button" class="pager-button" (click)="exportLogs('csv')" [disabled]="!canExport()">Export CSV</button>
+          <button type="button" class="pager-button" (click)="exportLogs('tsv')" [disabled]="!canExport()">Export TSV</button>
+        </div>
+      </div>
+    } @else {
+      <div class="toolbar">
+        <input
+          class="search-input"
+          type="search"
+          placeholder="Search file name, path, or size..."
+          [value]="searchText()"
+          (input)="onSearchInput($event)"
+        />
+        <div class="toolbar-actions">
+          <span class="soft-badge">{{ isLoadingFiles() ? 'Loading files...' : 'File inventory' }}</span>
+        </div>
+      </div>
+    }
+
+    @if (activeTab() === 'records') {
+      @if (isLoading()) {
+        <p class="muted">Loading system logs...</p>
+      } @else if (filteredLogs().length === 0) {
+        <p class="muted">No logs available yet.</p>
+      } @else {
+        <div class="pager" aria-label="Log pagination">
+          <button type="button" class="pager-button" (click)="previousPage()" [disabled]="page() === 0">Previous</button>
+          <span>Page {{ page() + 1 }}</span>
+          <button type="button" class="pager-button" (click)="nextPage()" [disabled]="page() >= maxPage()">Next</button>
+        </div>
+
+        <ul class="log-list">
+          @for (entry of pagedLogs(); track entry.id + entry.timestamp) {
+            <li>
+              <div class="log-head">
+                <span class="log-tag" [ngClass]="entry.level">{{ entry.level }}</span>
+                <strong>{{ entry.deviceId }}</strong>
+                <span class="source">{{ entry.source }} · {{ entry.dataType }}</span>
+                <time>{{ entry.timestamp | date: 'short' }}</time>
+              </div>
+              <p class="payload">{{ entry.payloadText }}</p>
+              @if (entry.rawJson) {
+                <pre class="raw-json"><code>{{ entry.rawJson }}</code></pre>
+              }
+            </li>
+          }
+        </ul>
+      }
+    } @else {
+      @if (isLoadingFiles()) {
+        <p class="muted">Loading log files...</p>
+      } @else if (filteredFiles().length === 0) {
+        <p class="muted">No log files found.</p>
+      } @else {
+        <ul class="file-list">
+          @for (file of filteredFiles(); track file.path) {
+            <li>
+              <div class="file-head">
+                <div>
+                  <strong>{{ file.name }}</strong>
+                  <p>{{ file.path }}</p>
+                </div>
+                <div class="file-meta">
+                  <span class="file-tag" [class.current]="file.isCurrent">{{ file.isCurrent ? 'Current' : 'Rotated' }}</span>
+                  <span>{{ fileSummary(file) }}</span>
+                  <time>{{ file.lastModifiedUtc | date: 'short' }}</time>
+                </div>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </article>
+</section>

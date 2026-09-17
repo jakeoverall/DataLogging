@@ -11,9 +11,11 @@
     [searchText]="searchText()"
     [exportColumns]="exportColumns"
     [selectedColumns]="selectedColumns()"
+    [expandParsedJsonColumns]="expandParsedJsonColumns()"
     [canExport]="canExport()"
     (searchChanged)="onSearchChanged($event)"
     (columnToggled)="onColumnToggled($event)"
+    (expandParsedJsonColumnsChanged)="onExpandParsedJsonColumnsToggled($event)"
     (exportRequested)="exportLogs($event)"
   />
 
