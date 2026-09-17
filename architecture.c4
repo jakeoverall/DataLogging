@@ -1,0 +1,908 @@
+specification {
+  element actor {
+    style {
+      shape person
+      color amber
+    }
+  }
+
+  element system {
+    style {
+      color primary
+    }
+  }
+
+  element container {
+    style {
+      color muted
+    }
+  }
+
+  element component {
+    style {
+      color gray
+    }
+  }
+}
+
+model {
+
+  // ============================================================
+  // ACTORS
+  // ============================================================
+
+  fieldSupport = actor "Field Support" {
+    description "Uses recorded vehicle data to diagnose customer issues and product defects."
+    style {
+      color amber
+    }
+  }
+
+  rnd = actor "R&D Engineering" {
+    description "Uses vehicle data to investigate system behavior and influence future design changes."
+    style {
+      color indigo
+    }
+  }
+
+  mechanicalEngineering = actor "Mechanical Engineering" {
+    description "Processes vehicle data using tools such as Excel."
+    style {
+      color green
+    }
+  }
+
+
+  // ============================================================
+  // EXTERNAL SYSTEMS / HARDWARE
+  // ============================================================
+
+  sensors = system "Vehicle Sensors & Devices" {
+    description """
+      Physical sensors and devices installed on the autonomous forklift.
+
+      Examples:
+      - LiDAR
+      - Cameras
+      - IMU
+      - Wheel encoders
+      - Battery / power monitoring
+      - Fork position / height
+      - Ethernet devices
+      - CANOpen devices
+    """
+    style {
+      color sky
+      icon bootstrap:cpu
+    }
+
+    container ros2Topics "ROS2 Topics" {
+      description "Sensor and vehicle data already exposed through ROS2."
+      style {
+        color sky
+        icon bootstrap:broadcast
+      }
+    }
+
+    container canOpen "CANOpen Devices" {
+      description "Devices connected directly through the CANOpen bus."
+      style {
+        color amber
+        icon bootstrap:plug
+      }
+    }
+
+    container ethernet "Ethernet Devices" {
+      description "Sensors and devices communicating directly over Ethernet."
+      style {
+        color green
+        icon bootstrap:ethernet
+      }
+    }
+  }
+
+
+  // ============================================================
+  // VEHICLE
+  // ============================================================
+
+  forklift = system "Autonomous Forklift" {
+    description """
+      Embedded software environment running on the autonomous forklift.
+
+      ROS2 runs on an Nvidia Jetson System-on-Module with Ubuntu.
+      The logging system must not interfere with vehicle operation.
+    """
+    style {
+      color indigo
+      icon bootstrap:truck
+    }
+
+    // ----------------------------------------------------------
+    // DATA INGESTION
+    // ----------------------------------------------------------
+
+    container ingestion "Data Ingestion" {
+      description """
+        Receives data from ROS2 topics and other supported hardware
+        interfaces and converts it into a normalized representation.
+      """
+      style {
+        color sky
+        icon bootstrap:diagram-3
+      }
+
+      component deviceRegistry "Device Registry" {
+        description "Defines known devices, their types, protocols, and configuration."
+        style {
+          color indigo
+          icon bootstrap:list-check
+        }
+      }
+
+      component ros2Listener "ROS2 Listener" {
+        description "Subscribes to configured ROS2 topics."
+        style {
+          color sky
+          icon bootstrap:broadcast
+        }
+      }
+
+      component canOpenListener "CANOpen Listener" {
+        description "Reads configured CANOpen device data."
+        style {
+          color amber
+          icon bootstrap:plug
+        }
+      }
+
+      component ethernetListener "Ethernet Listener" {
+        description "Reads configured Ethernet-connected device data."
+        style {
+          color green
+          icon bootstrap:ethernet
+        }
+      }
+
+      component dataNormalizer "Data Normalizer" {
+        description "Converts source-specific messages into the common logging model."
+        style {
+          color secondary
+          icon bootstrap:shuffle
+        }
+      }
+
+      component ingestionService "Ingestion Service" {
+        description "Coordinates acquisition, normalization, validation, and publishing."
+        style {
+          color primary
+          icon bootstrap:diagram-3
+        }
+      }
+    }
+
+
+    // ----------------------------------------------------------
+    // LOGGING CORE
+    // ----------------------------------------------------------
+
+    container loggingCore "Logging Core" {
+      description """
+        Core logging pipeline responsible for creating durable,
+        versioned log records without coupling producers to storage.
+      """
+      style {
+        color indigo
+        icon bootstrap:journal-text
+      }
+
+      component logRecord "LogRecord Envelope" {
+        description """
+          Common metadata envelope around telemetry and events.
+
+          Includes vehicle, device, timestamp, sequence number,
+          schema version, priority, and payload metadata.
+        """
+        style {
+          color indigo
+          icon bootstrap:journal
+        }
+      }
+
+      component eventProcessor "Event Processor" {
+        description """
+          Categorizes incoming records as telemetry, state changes,
+          diagnostics, faults, or other operational events.
+        """
+        style {
+          color amber
+          icon bootstrap:activity
+        }
+      }
+
+      component eventPipeline "Event Pipeline" {
+        description "Decouples producers from downstream consumers."
+        style {
+          color primary
+          icon bootstrap:git
+        }
+      }
+
+      component backpressure "Backpressure & Buffering" {
+        description """
+          Provides bounded buffering so logging cannot block or
+          interfere with vehicle software.
+        """
+        style {
+          color red
+          icon bootstrap:arrows-collapse
+        }
+      }
+
+      component serializer "Serializer" {
+        description """
+          Converts records to a durable representation.
+          Serialization format is intentionally abstracted.
+        """
+        style {
+          color secondary
+          icon bootstrap:file-code
+        }
+      }
+    }
+
+
+    // ----------------------------------------------------------
+    // LOCAL STORAGE
+    // ----------------------------------------------------------
+
+    container localStorage "Local Durable Storage" {
+      description """
+        Vehicle-local storage used as the authoritative record while
+        the vehicle is operating, including during Wi-Fi outages.
+      """
+      style {
+        color green
+        icon bootstrap:database
+      }
+
+      component storageManager "Storage Manager" {
+        description "Writes and reads durable log segments."
+        style {
+          color green
+          icon bootstrap:hdd
+        }
+      }
+
+      component segmentManager "Log Segment Manager" {
+        description "Creates, closes, indexes, and recovers log segments."
+        style {
+          color muted
+          icon bootstrap:boxes
+        }
+      }
+
+      component retentionPolicy "Retention Policy" {
+        description """
+          Controls storage consumption and prioritizes which data
+          may be discarded when capacity becomes constrained.
+        """
+        style {
+          color amber
+          icon bootstrap:archive
+        }
+      }
+
+      component integrity "Integrity & Recovery" {
+        description """
+          Provides checksums, sequence tracking, crash recovery,
+          and detection of incomplete or corrupt segments.
+        """
+        style {
+          color red
+          icon bootstrap:shield-check
+        }
+      }
+
+      component localLogReader "Local Log Reader" {
+        description "Provides streaming access to locally recorded data."
+        style {
+          color primary
+          icon bootstrap:book
+        }
+      }
+    }
+
+
+    // ----------------------------------------------------------
+    // SYNC
+    // ----------------------------------------------------------
+
+    container synchronization "Synchronization Service" {
+      description """
+        Synchronizes locally recorded data with the central repository
+        whenever network connectivity is available.
+      """
+      style {
+        color amber
+        icon bootstrap:cloud-arrow-up
+      }
+
+      component connectivityMonitor "Connectivity Monitor" {
+        description "Detects network availability and changes in connectivity."
+        style {
+          color sky
+          icon bootstrap:wifi
+        }
+      }
+
+      component uploadQueue "Upload Queue" {
+        description """
+          Tracks local log segments awaiting synchronization.
+          Designed to survive intermittent connectivity.
+        """
+        style {
+          color amber
+          icon bootstrap:cloud-upload
+        }
+      }
+
+      component syncService "Sync Service" {
+        description "Uploads durable log segments when connectivity permits."
+        style {
+          color green
+          icon bootstrap:cloud-arrow-up
+        }
+      }
+
+      component conflictResolver "Idempotency & Conflict Resolution" {
+        description """
+          Prevents duplicate uploads and safely handles interrupted
+          or retried synchronization.
+        """
+        style {
+          color red
+          icon bootstrap:arrow-repeat
+        }
+      }
+    }
+
+
+    // ----------------------------------------------------------
+    // MANAGEMENT API
+    // ----------------------------------------------------------
+
+    container managementApi "Management API" {
+      description """
+        Administrative and diagnostic interface for configuring,
+        monitoring, querying, and interacting with the logging system.
+      """
+      style {
+        color secondary
+        icon bootstrap:sliders
+      }
+
+      component authentication "Authentication / Authorization" {
+        description """
+          OAuth2/OIDC boundary.
+
+          Assessment implementation: stub only.
+          Production implementation would integrate with the approved
+          identity provider.
+        """
+        style {
+          color red
+          icon bootstrap:shield-lock
+        }
+      }
+
+      component configuration "Configuration" {
+        description """
+          Manages devices, logging profiles, sampling rates,
+          priorities, retention, and other runtime configuration.
+        """
+        style {
+          color indigo
+          icon bootstrap:sliders
+        }
+      }
+
+      component health "Health & Metrics" {
+        description """
+          Exposes logging health, queue depth, disk utilization,
+          connectivity, dropped records, and synchronization status.
+        """
+        style {
+          color green
+          icon bootstrap:heart-pulse
+        }
+      }
+
+      component logsApi "Logs API" {
+        description "Provides access to recorded log metadata and data queries."
+        style {
+          color primary
+          icon bootstrap:file-earmark-text
+        }
+      }
+
+      component playbackApi "Playback API" {
+        description "Controls analysis and replay of recorded sessions."
+        style {
+          color amber
+          icon bootstrap:play-circle
+        }
+      }
+
+      component exportApi "Export API" {
+        description "Exports recorded data to supported formats such as CSV, JSON, and Excel."
+        style {
+          color secondary
+          icon bootstrap:file-earmark-arrow-down
+        }
+      }
+    }
+
+
+    // ----------------------------------------------------------
+    // PLAYBACK / ANALYSIS
+    // ----------------------------------------------------------
+
+    container analysis "Log Analysis & Playback" {
+      description """
+        Offline processing of recorded vehicle data for R&D,
+        field diagnostics, and other engineering workflows.
+      """
+      style {
+        color amber
+        icon bootstrap:play-btn
+      }
+
+      component queryEngine "Log Query Engine" {
+        description "Queries recorded telemetry and events."
+        style {
+          color primary
+          icon bootstrap:search
+        }
+      }
+
+      component playbackEngine "Playback Engine" {
+        description """
+          Reconstructs recorded sessions in chronological order.
+          May publish records back into ROS2 for system replay.
+        """
+        style {
+          color amber
+          icon bootstrap:play-circle
+        }
+      }
+
+      component transformer "Data Transformer" {
+        description """
+          Converts the common log representation into consumer-specific
+          formats without coupling the logging system to those consumers.
+        """
+        style {
+          color secondary
+          icon bootstrap:shuffle
+        }
+      }
+
+      component csvExporter "CSV Exporter" {
+        description "Exports tabular data as CSV."
+        style {
+          color green
+          icon bootstrap:file-earmark-spreadsheet
+        }
+      }
+
+      component jsonExporter "JSON Exporter" {
+        description "Exports data as JSON."
+        style {
+          color primary
+          icon bootstrap:filetype-json
+        }
+      }
+
+      component excelExporter "Excel Exporter" {
+        description "Produces Excel-compatible engineering data."
+        style {
+          color green
+          icon bootstrap:file-earmark-excel
+        }
+      }
+    }
+  }
+
+
+  // ============================================================
+  // CENTRAL REPOSITORY
+  // ============================================================
+
+  centralRepository = system "Central Log Repository" {
+    description """
+      Central repository for synchronized vehicle logs.
+
+      The concrete implementation is intentionally left open.
+      It may be cloud-hosted, on-premises, or a specialized telemetry
+      / time-series storage platform.
+    """
+    style {
+      color green
+      icon bootstrap:database
+    }
+
+    container centralLogStore "Central Log Store" {
+      description "Durable long-term storage for synchronized vehicle data."
+      style {
+        color green
+        icon bootstrap:database
+      }
+    }
+
+    container centralQuery "Central Query & Analytics" {
+      description "Provides query and analysis capabilities over synchronized logs."
+      style {
+        color indigo
+        icon bootstrap:search
+      }
+    }
+
+    container centralRetention "Long-Term Retention" {
+      description "Manages archival and retention of historical vehicle data."
+      style {
+        color muted
+        icon bootstrap:archive
+      }
+    }
+  }
+
+
+  // ============================================================
+  // MOCK HARDWARE
+  // ============================================================
+
+  mockHardware = system "Mock Data Emitter" {
+    description """
+      Development and testing substitute for physical vehicle hardware.
+      Produces representative ROS2, CANOpen, and Ethernet data.
+    """
+    style {
+      color amber
+      icon bootstrap:cpu
+    }
+
+    container mockRos2 "Mock ROS2 Data" {
+      description "Produces representative ROS2 topic data."
+      style {
+        color sky
+        icon bootstrap:broadcast
+      }
+    }
+
+    container mockCanOpen "Mock CANOpen Data" {
+      description "Produces representative CANOpen device data."
+      style {
+        color amber
+        icon bootstrap:plug
+      }
+    }
+
+    container mockEthernet "Mock Ethernet Data" {
+      description "Produces representative Ethernet device data."
+      style {
+        color green
+        icon bootstrap:ethernet
+      }
+    }
+  }
+
+
+  // ============================================================
+  // CROSS-CUTTING SECURITY
+  // ============================================================
+
+  security = system "Security Boundary" {
+    description """
+      Cross-cutting security concerns.
+
+      OAuth2/OIDC authentication and authorization are represented
+      architecturally but are intentionally stubbed for this assessment.
+    """
+    style {
+      color red
+      icon bootstrap:shield-lock
+    }
+  }
+
+
+  // ============================================================
+  // VEHICLE DATA FLOWS
+  // ============================================================
+
+  sensors.ros2Topics -> forklift.ingestion.ros2Listener "Publishes ROS2 topics"
+  sensors.canOpen -> forklift.ingestion.canOpenListener "Provides CANOpen data"
+  sensors.ethernet -> forklift.ingestion.ethernetListener "Provides Ethernet data"
+
+  mockHardware.mockRos2 -> forklift.ingestion.ros2Listener "Simulates ROS2 topics"
+  mockHardware.mockCanOpen -> forklift.ingestion.canOpenListener "Simulates CANOpen data"
+  mockHardware.mockEthernet -> forklift.ingestion.ethernetListener "Simulates Ethernet data"
+
+
+  // ============================================================
+  // INGESTION PIPELINE
+  // ============================================================
+
+  forklift.ingestion.deviceRegistry -> forklift.ingestion.ros2Listener "Configures subscriptions"
+  forklift.ingestion.deviceRegistry -> forklift.ingestion.canOpenListener "Configures devices"
+  forklift.ingestion.deviceRegistry -> forklift.ingestion.ethernetListener "Configures devices"
+
+  forklift.ingestion.ros2Listener -> forklift.ingestion.dataNormalizer "Raw ROS2 messages"
+  forklift.ingestion.canOpenListener -> forklift.ingestion.dataNormalizer "Raw CANOpen data"
+  forklift.ingestion.ethernetListener -> forklift.ingestion.dataNormalizer "Raw Ethernet data"
+
+  forklift.ingestion.dataNormalizer -> forklift.ingestion.ingestionService "Normalized records"
+  forklift.ingestion.ingestionService -> forklift.loggingCore.eventPipeline "Publishes records"
+
+
+  // ============================================================
+  // LOGGING PIPELINE
+  // ============================================================
+
+  forklift.loggingCore.eventPipeline -> forklift.loggingCore.backpressure "Buffers records"
+
+  forklift.loggingCore.backpressure -> forklift.loggingCore.eventProcessor "Processes records"
+
+  forklift.loggingCore.eventProcessor -> forklift.loggingCore.logRecord "Creates log envelopes"
+
+  forklift.loggingCore.logRecord -> forklift.loggingCore.serializer "Serialize payload"
+
+  forklift.loggingCore.serializer -> forklift.localStorage.storageManager "Durable record"
+
+
+  // ============================================================
+  // LOCAL STORAGE
+  // ============================================================
+
+  forklift.localStorage.storageManager -> forklift.localStorage.segmentManager "Write segment"
+  forklift.localStorage.segmentManager -> forklift.localStorage.integrity "Verify segment integrity"
+
+  forklift.localStorage.retentionPolicy -> forklift.localStorage.storageManager "Enforce retention"
+
+  forklift.localStorage.localLogReader -> forklift.analysis.queryEngine "Read recorded data"
+  forklift.localStorage.localLogReader -> forklift.analysis.playbackEngine "Stream recorded session"
+
+
+  // ============================================================
+  // SYNCHRONIZATION
+  // ============================================================
+
+  forklift.synchronization.connectivityMonitor -> forklift.synchronization.syncService "Connectivity state"
+
+  forklift.localStorage.segmentManager -> forklift.synchronization.uploadQueue "Completed log segments"
+
+  forklift.synchronization.uploadQueue -> forklift.synchronization.syncService "Pending segments"
+
+  forklift.synchronization.syncService -> forklift.synchronization.conflictResolver "Validate upload"
+
+  forklift.synchronization.conflictResolver -> centralRepository.centralLogStore "Synchronize logs"
+
+  centralRepository.centralLogStore -> centralRepository.centralRetention "Archive historical data"
+
+
+  // ============================================================
+  // ANALYSIS
+  // ============================================================
+
+  centralRepository.centralLogStore -> centralRepository.centralQuery "Query synchronized data"
+
+  centralRepository.centralQuery -> forklift.analysis.queryEngine "Remote analysis"
+
+  forklift.analysis.queryEngine -> forklift.analysis.transformer "Query results"
+
+  forklift.analysis.transformer -> forklift.analysis.csvExporter "Tabular data"
+  forklift.analysis.transformer -> forklift.analysis.jsonExporter "Structured data"
+  forklift.analysis.transformer -> forklift.analysis.excelExporter "Engineering data"
+
+
+  // ============================================================
+  // PLAYBACK
+  // ============================================================
+
+  forklift.analysis.playbackEngine -> sensors.ros2Topics "Optional ROS2 replay"
+
+
+  // ============================================================
+  // MANAGEMENT API
+  // ============================================================
+
+  fieldSupport -> forklift.managementApi "Configure, monitor, query, and diagnose"
+  rnd -> forklift.managementApi "Configure, query, analyze, and replay"
+  mechanicalEngineering -> forklift.managementApi "Request engineering exports"
+
+  forklift.managementApi.authentication -> security "Authenticate / authorize"
+
+  forklift.managementApi.configuration -> forklift.ingestion.deviceRegistry "Configure devices"
+  forklift.managementApi.configuration -> forklift.loggingCore.eventProcessor "Configure logging profiles"
+
+  forklift.managementApi.health -> forklift.loggingCore.backpressure "Read queue metrics"
+  forklift.managementApi.health -> forklift.localStorage.storageManager "Read storage metrics"
+  forklift.managementApi.health -> forklift.synchronization.connectivityMonitor "Read connectivity state"
+
+  forklift.managementApi.logsApi -> forklift.localStorage.localLogReader "Query local logs"
+  forklift.managementApi.logsApi -> forklift.analysis.queryEngine "Query historical logs"
+
+  forklift.managementApi.playbackApi -> forklift.analysis.playbackEngine "Start playback"
+  forklift.managementApi.exportApi -> forklift.analysis.transformer "Transform data"
+
+
+  // ============================================================
+  // SECURITY
+  // ============================================================
+
+  security -> forklift.managementApi.authentication "Provides authentication policy"
+}
+
+
+views {
+
+  // ============================================================
+  // 1. PRESENTATION OPENING
+  // ============================================================
+
+  view systemContext {
+    title "Autonomous Forklift Data Logging System — System Context"
+
+    include fieldSupport
+    include rnd
+    include mechanicalEngineering
+
+    include sensors
+    include forklift
+    include centralRepository
+    include mockHardware
+
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 2. MAIN CONTAINER VIEW
+  // ============================================================
+
+  view forkliftArchitecture of forklift {
+    title "Autonomous Forklift Data Logging System — Container View"
+
+    include *
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 3. DATA PIPELINE
+  // ============================================================
+
+  view dataPipeline {
+    title "Data Pipeline — Ingestion to Durable Storage"
+
+    include sensors.ros2Topics
+    include sensors.canOpen
+    include sensors.ethernet
+
+    include forklift.ingestion
+    include forklift.loggingCore
+    include forklift.localStorage
+    include forklift.synchronization
+
+    include centralRepository.centralLogStore
+
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 4. OFFLINE / SYNCHRONIZATION FLOW
+  // ============================================================
+
+  view synchronizationFlow {
+    title "Offline-First Logging & Synchronization"
+
+    include forklift.loggingCore
+    include forklift.localStorage
+    include forklift.synchronization
+    include centralRepository.centralLogStore
+
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 5. ANALYSIS / CONSUMER FLOW
+  // ============================================================
+
+  view analysisFlow {
+    title "Log Analysis, Playback & Export"
+
+    include forklift.localStorage.localLogReader
+    include forklift.analysis
+    include centralRepository.centralQuery
+
+    include fieldSupport
+    include rnd
+    include mechanicalEngineering
+
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 6. MANAGEMENT / SECURITY
+  // ============================================================
+
+  view management {
+    title "Management, Configuration & Security"
+
+    include fieldSupport
+    include rnd
+    include mechanicalEngineering
+
+    include forklift.managementApi
+    include security
+
+    include forklift.ingestion.deviceRegistry
+    include forklift.loggingCore.eventProcessor
+    include forklift.localStorage.storageManager
+    include forklift.synchronization.connectivityMonitor
+    include forklift.analysis
+
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 7. LOGGING CORE COMPONENT VIEW
+  // ============================================================
+
+  view loggingCoreComponents of forklift.loggingCore {
+    title "Logging Core — Component View"
+
+    include *
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 8. STORAGE COMPONENT VIEW
+  // ============================================================
+
+  view storageComponents of forklift.localStorage {
+    title "Local Storage — Component View"
+
+    include *
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 9. SYNC COMPONENT VIEW
+  // ============================================================
+
+  view synchronizationComponents of forklift.synchronization {
+    title "Synchronization — Component View"
+
+    include *
+    autoLayout TopBottom
+  }
+
+
+  // ============================================================
+  // 10. ANALYSIS COMPONENT VIEW
+  // ============================================================
+
+  view analysisComponents of forklift.analysis {
+    title "Log Analysis & Playback — Component View"
+
+    include *
+    autoLayout TopBottom
+  }
+}

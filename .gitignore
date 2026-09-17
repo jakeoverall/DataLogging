@@ -1,0 +1,13 @@
+## .NET
+bin/
+obj/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.nupkg
+packages/
+TestResults/
+coverage/
+*.log

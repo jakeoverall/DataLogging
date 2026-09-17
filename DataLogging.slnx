@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DataLogging.Analysis/DataLogging.Analysis.csproj" />
+    <Project Path="src/DataLogging.Api/DataLogging.Api.csproj" />
+    <Project Path="src/DataLogging.Core/DataLogging.Core.csproj" />
+    <Project Path="src/DataLogging.Ingestion/DataLogging.Ingestion.csproj" />
+    <Project Path="src/DataLogging.MockHardware/DataLogging.MockHardware.csproj" />
+    <Project Path="src/DataLogging.Storage/DataLogging.Storage.csproj" />
+    <Project Path="src/DataLogging.Sync/DataLogging.Sync.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DataLogging.MockHardware.Tests/DataLogging.MockHardware.Tests.csproj" />
+  </Folder>
+</Solution>
