@@ -7,11 +7,12 @@ import type { SystemLogFileDescriptor } from '../models/system-logs';
 const MAX_LOG_EVENT_BATCH = 20;
 const LOG_STREAM_RECONNECT_MS = 1000;
 
-export type DeviceLogStreamState = 'connecting' | 'live' | 'reconnecting';
+export type DeviceLogStreamState = 'connecting' | 'live' | 'idle' | 'reconnecting';
 
 export interface DeviceLogStreamUpdate {
   state: DeviceLogStreamState;
   entries: DeviceLogEntry[];
+  idleAt?: string | null;
 }
 
 const normalizeProtocol = (value: unknown): string => {
@@ -269,7 +270,7 @@ export class TelemetryApiService {
         );
 
         const handleConnected = () => {
-          subscriber.next({ state: 'live', entries: [] });
+          subscriber.next({ state: 'live', entries: [], idleAt: null });
         };
 
         const handleLogBatch = (event: Event) => {
@@ -278,7 +279,17 @@ export class TelemetryApiService {
             return;
           }
 
-          subscriber.next({ state: 'live', entries: payload.slice(0, limit) });
+          subscriber.next({ state: 'live', entries: payload.slice(0, limit), idleAt: null });
+        };
+
+        const handleIdle = (event: Event) => {
+          const message = event as MessageEvent<string>;
+          const parsed = this.parseLiveIdleEvent(message.data, deviceId);
+          if (!parsed) {
+            return;
+          }
+
+          subscriber.next({ state: 'idle', entries: [], idleAt: parsed.timestamp });
         };
 
         const handleError = () => {
@@ -305,6 +316,7 @@ export class TelemetryApiService {
 
         source.addEventListener('connected', handleConnected as EventListener);
         source.addEventListener('logs', handleLogBatch as EventListener);
+        source.addEventListener('idle', handleIdle as EventListener);
         source.onerror = handleError;
       };
 
@@ -410,6 +422,23 @@ export class TelemetryApiService {
         .filter((entry) => !!entry) as DeviceLogEntry[];
     } catch {
       return [];
+    }
+  }
+
+  private parseLiveIdleEvent(value: string, deviceId: string): { timestamp: string } | null {
+    try {
+      const parsed = JSON.parse(value) as { timestamp?: string; deviceId?: string };
+      if (!parsed || typeof parsed.timestamp !== 'string') {
+        return null;
+      }
+
+      if (parsed.deviceId && parsed.deviceId !== deviceId) {
+        return null;
+      }
+
+      return { timestamp: parsed.timestamp };
+    } catch {
+      return null;
     }
   }
 

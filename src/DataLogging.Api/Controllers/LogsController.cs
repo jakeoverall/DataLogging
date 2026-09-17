@@ -4,6 +4,8 @@ using DataLogging.Storage.Configuration;
 using DataLogging.Storage.Writers;
 using DataLogging.Api.Infrastructure;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -115,9 +117,31 @@ public sealed class LogsController : ControllerBase
 
             var batch = new List<object>(maxBatchSize);
             var nextFlushAt = DateTimeOffset.UtcNow.Add(flushWindow);
+            string? lastPayloadSignature = null;
 
             await foreach (var record in _liveLogStream.SubscribeAsync(deviceId, source, dataType, cancellationToken).WithCancellation(cancellationToken))
             {
+                var payloadText = record.Payload.Length > 0 ? Encoding.UTF8.GetString(record.Payload.Span) : string.Empty;
+                var payloadSignature = NormalizeStateForComparison(payloadText);
+                var isNoChange = lastPayloadSignature is not null && string.Equals(lastPayloadSignature, payloadSignature, StringComparison.Ordinal);
+
+                if (isNoChange)
+                {
+                    await SseResponseWriter.WriteEventAsync(
+                        Response,
+                        "idle",
+                        new
+                        {
+                            deviceId,
+                            timestamp = record.Metadata.RecordedTimestamp,
+                            message = "No meaningful state change since the last log emission."
+                        },
+                        cancellationToken).ConfigureAwait(false);
+
+                    continue;
+                }
+
+                lastPayloadSignature = payloadSignature;
                 batch.Add(ToLogPayload(record));
                 var now = DateTimeOffset.UtcNow;
                 if (batch.Count < maxBatchSize && now < nextFlushAt)
@@ -186,6 +210,89 @@ public sealed class LogsController : ControllerBase
         };
     }
 
+
+    private static string NormalizeStateForComparison(string payloadText)
+    {
+        var trimmed = payloadText.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            if (trimmed.StartsWith("{", StringComparison.Ordinal) || trimmed.StartsWith("[", StringComparison.Ordinal))
+            {
+                var node = JsonNode.Parse(trimmed);
+                if (node is null)
+                {
+                    return trimmed;
+                }
+
+                return CanonicalizeJsonForIdleComparison(node);
+            }
+        }
+        catch (JsonException)
+        {
+            // Fall back to original text when payload isn't valid JSON.
+        }
+
+        return trimmed;
+    }
+
+    private static string CanonicalizeJsonForIdleComparison(JsonNode node)
+    {
+        if (node is JsonObject obj)
+        {
+            var normalized = new JsonObject();
+            foreach (var property in obj)
+            {
+                if (IsTimestampKey(property.Key))
+                {
+                    continue;
+                }
+
+                normalized[property.Key] = property.Value is null ? null : CanonicalizeJsonForIdleComparison(property.Value);
+            }
+
+            return normalized.ToJsonString();
+        }
+
+        if (node is JsonArray array)
+        {
+            var normalized = new JsonArray();
+            foreach (var item in array)
+            {
+                if (item is null)
+                {
+                    normalized.Add(null);
+                    continue;
+                }
+
+                normalized.Add(CanonicalizeJsonForIdleComparison(item));
+            }
+
+            return normalized.ToJsonString();
+        }
+
+        return node.ToJsonString();
+    }
+
+    private static bool IsTimestampKey(string key)
+    {
+        var normalized = key.Trim();
+        return normalized.Equals("timestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("time", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("recordedTimestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("sourceTimestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("lastUpdated", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("updatedAt", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("createdAt", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("Timestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("Time", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("At", StringComparison.OrdinalIgnoreCase);
+    }
+    
     private static IEnumerable<string> EnumerateLogFiles(string filePath)
     {
         var fullCurrentPath = Path.GetFullPath(filePath);
