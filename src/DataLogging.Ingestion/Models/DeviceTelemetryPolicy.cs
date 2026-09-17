@@ -8,6 +8,12 @@ public sealed record DeviceTelemetryPolicy
 
     public TimeSpan HeartbeatInterval { get; init; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// Interval used for persisting unchanged (idle) payloads.
+    /// Defaults to the heartbeat interval when not configured.
+    /// </summary>
+    public TimeSpan IdlePersistInterval { get; init; } = TimeSpan.FromSeconds(30);
+
     public static DeviceTelemetryPolicy FromProperties(IReadOnlyDictionary<string, string>? properties)
     {
         var lookup = properties ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -15,12 +21,15 @@ public sealed record DeviceTelemetryPolicy
         var delta = ReadDouble(lookup, ["delta", "deltaThreshold", "minDelta", "changeThreshold", "sampleDelta"]);
         var faultTolerance = ReadDouble(lookup, ["faultTolerance", "faultToleranceValue", "faultThreshold", "maxFaultDelta"]);
         var heartbeatInterval = ReadTimeSpan(lookup, ["heartbeatInterval", "heartbeatIntervalSeconds", "heartbeatSeconds", "heartbeat", "sampleInterval", "sampleIntervalSeconds"]);
+        var resolvedHeartbeatInterval = heartbeatInterval ?? TimeSpan.FromSeconds(30);
+        var idlePersistInterval = ReadTimeSpan(lookup, ["idlePersistInterval", "idleInterval", "idleHeartbeatInterval", "noChangePersistInterval", "unchangedPersistInterval", "idlePersistSeconds"]);
 
         return new DeviceTelemetryPolicy
         {
             DeltaThreshold = delta,
             FaultTolerance = faultTolerance,
-            HeartbeatInterval = heartbeatInterval ?? TimeSpan.FromSeconds(30)
+            HeartbeatInterval = resolvedHeartbeatInterval,
+            IdlePersistInterval = idlePersistInterval ?? resolvedHeartbeatInterval
         };
     }
 

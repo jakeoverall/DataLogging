@@ -40,6 +40,8 @@ export class DeviceLogsFacade {
     switch (this.streamState()) {
       case 'live':
         return 'Live';
+      case 'idle':
+        return 'Idle';
       case 'reconnecting':
         return 'Reconnecting';
       default:
@@ -53,6 +55,17 @@ export class DeviceLogsFacade {
 
     if (this.streamState() === 'reconnecting') {
       return 'Trying to recover stream...';
+    }
+
+    if (this.streamState() === 'idle' && last !== null) {
+      const ageMs = Math.max(0, tick - last);
+      const seconds = Math.floor(ageMs / 1_000);
+      if (seconds < 60) {
+        return `Idle for ${seconds}s`;
+      }
+
+      const minutes = Math.floor(seconds / 60);
+      return `Idle for ${minutes}m`;
     }
 
     if (last === null) {
@@ -121,7 +134,7 @@ export class DeviceLogsFacade {
         }),
         switchMap((deviceId) => merge(
           this.api.getLogs(deviceId, this.streamLimit).pipe(
-            map((entries) => ({ state: 'connecting', entries } satisfies DeviceLogStreamUpdate))
+            map((entries) => ({ state: 'connecting', entries, idleAt: null } satisfies DeviceLogStreamUpdate))
           ),
           this.api.streamLogs(deviceId, this.streamLimit)
         ).pipe(
@@ -142,8 +155,13 @@ export class DeviceLogsFacade {
                 rawJson: this.formatRawJson(item.payloadText)
               }));
 
-            return { state: nextUpdate.state, logs, batchCount: nextUpdate.entries.length };
-          }, { state: 'connecting' as DeviceLogStreamState, logs: [] as DeviceLogEntry[], batchCount: 0 })
+            return {
+              state: nextUpdate.state,
+              logs,
+              batchCount: nextUpdate.entries.length,
+              idleAt: nextUpdate.idleAt ?? null
+            };
+          }, { state: 'connecting' as DeviceLogStreamState, logs: [] as DeviceLogEntry[], batchCount: 0, idleAt: null as string | null })
         )),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -153,6 +171,8 @@ export class DeviceLogsFacade {
 
         if (update.batchCount > 0) {
           this.lastEventAt.set(Date.now());
+        } else if (update.idleAt) {
+          this.lastEventAt.set(new Date(update.idleAt).getTime() || Date.now());
         }
 
         const currentPage = this.page();

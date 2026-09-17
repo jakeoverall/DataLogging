@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using DataLogging.Core.Models;
 using DataLogging.Ingestion.Models;
@@ -9,6 +11,10 @@ public sealed class DeviceTelemetryFilter
 {
     private readonly ConcurrentDictionary<string, DeviceTelemetryState> _deviceStates = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Persists first-seen payloads and meaningful state changes, while treating timestamp-only updates
+    /// as idle until the device heartbeat interval elapses.
+    /// </summary>
     public bool ShouldPersist(LogRecord<object> record, DeviceDefinition device)
     {
         ArgumentNullException.ThrowIfNull(record);
@@ -16,36 +22,224 @@ public sealed class DeviceTelemetryFilter
 
         var policy = DeviceTelemetryPolicy.FromProperties(device.Properties);
         var state = _deviceStates.GetOrAdd(device.DeviceId, _ => new DeviceTelemetryState());
+        var payloadSignature = BuildPayloadSignature(record.Payload);
         var currentValue = ExtractNumericValue(record.Payload);
-
-        if (!currentValue.HasValue)
-        {
-            state.Update(record.Metadata.RecordedTimestamp, 0d);
-            return true;
-        }
 
         if (state.LastPersistedAt is null)
         {
-            state.Update(record.Metadata.RecordedTimestamp, currentValue.Value);
+            state.Update(record.Metadata.RecordedTimestamp, payloadSignature, currentValue);
             return true;
         }
 
-        var heartbeatDue = record.Metadata.RecordedTimestamp - state.LastPersistedAt >= policy.HeartbeatInterval;
-        if (heartbeatDue)
+        var elapsed = record.Metadata.RecordedTimestamp - state.LastPersistedAt;
+        var heartbeatDue = elapsed >= policy.HeartbeatInterval;
+        var idlePersistDue = elapsed >= policy.IdlePersistInterval;
+
+        if (string.Equals(state.LastPayloadSignature, payloadSignature, StringComparison.Ordinal))
         {
-            state.Update(record.Metadata.RecordedTimestamp, currentValue.Value);
+            if (!idlePersistDue)
+            {
+                return false;
+            }
+
+            state.Update(record.Metadata.RecordedTimestamp, payloadSignature, currentValue);
             return true;
         }
 
-        var delta = Math.Abs(state.LastValue - currentValue.Value);
+        if (!currentValue.HasValue || !state.LastValue.HasValue)
+        {
+            state.Update(record.Metadata.RecordedTimestamp, payloadSignature, currentValue);
+            return true;
+        }
+
+        var delta = Math.Abs(state.LastValue.Value - currentValue.Value);
         var threshold = Math.Max(Math.Max(policy.DeltaThreshold, 0d), Math.Max(policy.FaultTolerance, 0d));
         if (delta >= threshold)
         {
-            state.Update(record.Metadata.RecordedTimestamp, currentValue.Value);
+            state.Update(record.Metadata.RecordedTimestamp, payloadSignature, currentValue);
+            return true;
+        }
+
+        if (heartbeatDue)
+        {
+            state.Update(record.Metadata.RecordedTimestamp, payloadSignature, currentValue);
             return true;
         }
 
         return false;
+    }
+
+    private static string BuildPayloadSignature(object payload)
+    {
+        return BuildValueSignature(payload);
+    }
+
+    private static string BuildValueSignature(object? value)
+    {
+        if (value is null)
+        {
+            return "null";
+        }
+
+        if (value is JsonElement jsonElement)
+        {
+            return BuildJsonElementSignature(jsonElement);
+        }
+
+        if (value is JsonElement[] elements)
+        {
+            var buffer = new StringBuilder();
+            buffer.Append('[');
+            for (var index = 0; index < elements.Length; index++)
+            {
+                if (index > 0)
+                {
+                    buffer.Append(',');
+                }
+
+                buffer.Append(BuildJsonElementSignature(elements[index]));
+            }
+
+            buffer.Append(']');
+            return buffer.ToString();
+        }
+
+        if (value is IDictionary<string, object> objectDictionary)
+        {
+            return BuildDictionarySignature(objectDictionary.Select(kvp => new KeyValuePair<string, object?>(kvp.Key, kvp.Value)));
+        }
+
+        if (value is IEnumerable<KeyValuePair<string, object>> dictionaryEntries)
+        {
+            return BuildDictionarySignature(dictionaryEntries.Select(kvp => new KeyValuePair<string, object?>(kvp.Key, kvp.Value)));
+        }
+
+        if (value is IEnumerable<object> arrayValues)
+        {
+            var values = arrayValues.ToArray();
+            var buffer = new StringBuilder();
+            buffer.Append('[');
+            for (var index = 0; index < values.Length; index++)
+            {
+                if (index > 0)
+                {
+                    buffer.Append(',');
+                }
+
+                buffer.Append(BuildValueSignature(values[index]));
+            }
+
+            buffer.Append(']');
+            return buffer.ToString();
+        }
+
+        if (value is string text)
+        {
+            return JsonSerializer.Serialize(text);
+        }
+
+        if (value is DateTimeOffset dto)
+        {
+            return dto.ToString("O", CultureInfo.InvariantCulture);
+        }
+
+        if (value is DateTime dt)
+        {
+            return dt.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+        }
+
+        return JsonSerializer.Serialize(value);
+    }
+
+    private static string BuildDictionarySignature(IEnumerable<KeyValuePair<string, object?>> values)
+    {
+        var filtered = values
+            .Where(entry => !IsTimestampKey(entry.Key))
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+            .ToArray();
+
+        var buffer = new StringBuilder();
+        buffer.Append('{');
+        for (var index = 0; index < filtered.Length; index++)
+        {
+            if (index > 0)
+            {
+                buffer.Append(',');
+            }
+
+            var entry = filtered[index];
+            buffer.Append(JsonSerializer.Serialize(entry.Key));
+            buffer.Append(':');
+            buffer.Append(BuildValueSignature(entry.Value));
+        }
+
+        buffer.Append('}');
+        return buffer.ToString();
+    }
+
+    private static string BuildJsonElementSignature(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var properties = element.EnumerateObject()
+                .Where(property => !IsTimestampKey(property.Name))
+                .OrderBy(property => property.Name, StringComparer.Ordinal)
+                .ToArray();
+
+            var buffer = new StringBuilder();
+            buffer.Append('{');
+            for (var index = 0; index < properties.Length; index++)
+            {
+                if (index > 0)
+                {
+                    buffer.Append(',');
+                }
+
+                var property = properties[index];
+                buffer.Append(JsonSerializer.Serialize(property.Name));
+                buffer.Append(':');
+                buffer.Append(BuildJsonElementSignature(property.Value));
+            }
+
+            buffer.Append('}');
+            return buffer.ToString();
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            var items = element.EnumerateArray().ToArray();
+            var buffer = new StringBuilder();
+            buffer.Append('[');
+            for (var index = 0; index < items.Length; index++)
+            {
+                if (index > 0)
+                {
+                    buffer.Append(',');
+                }
+
+                buffer.Append(BuildJsonElementSignature(items[index]));
+            }
+
+            buffer.Append(']');
+            return buffer.ToString();
+        }
+
+        return element.GetRawText();
+    }
+
+    private static bool IsTimestampKey(string key)
+    {
+        var normalized = key.Trim();
+        return normalized.Equals("timestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("time", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("recordedTimestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("sourceTimestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("lastUpdated", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("updatedAt", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("createdAt", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("Timestamp", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("Time", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("At", StringComparison.OrdinalIgnoreCase);
     }
 
     private static double? ExtractNumericValue(object payload)
@@ -142,11 +336,14 @@ public sealed class DeviceTelemetryFilter
     {
         public DateTimeOffset? LastPersistedAt { get; private set; }
 
-        public double LastValue { get; private set; }
+        public string LastPayloadSignature { get; private set; } = string.Empty;
 
-        public void Update(DateTimeOffset timestamp, double value)
+        public double? LastValue { get; private set; }
+
+        public void Update(DateTimeOffset timestamp, string payloadSignature, double? value)
         {
             LastPersistedAt = timestamp;
+            LastPayloadSignature = payloadSignature;
             LastValue = value;
         }
     }

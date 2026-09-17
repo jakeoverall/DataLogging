@@ -21,7 +21,8 @@ public sealed class DeviceTelemetryPolicyTests
             {
                 ["deltaThreshold"] = "0.25",
                 ["faultTolerance"] = "0.75",
-                ["heartbeatInterval"] = "15s"
+                ["heartbeatInterval"] = "15s",
+                ["idlePersistInterval"] = "5m"
             }
         };
 
@@ -30,6 +31,7 @@ public sealed class DeviceTelemetryPolicyTests
         Assert.Equal(0.25, policy.DeltaThreshold);
         Assert.Equal(0.75, policy.FaultTolerance);
         Assert.Equal(TimeSpan.FromSeconds(15), policy.HeartbeatInterval);
+        Assert.Equal(TimeSpan.FromMinutes(5), policy.IdlePersistInterval);
     }
 
     [Fact]
@@ -66,7 +68,106 @@ public sealed class DeviceTelemetryPolicyTests
         Assert.True(filter.ShouldPersist(heartbeat, device));
     }
 
+    [Fact]
+    public void DeviceTelemetryFilter_Treats_Timestamp_Only_Payload_Changes_As_Idle_Until_Heartbeat()
+    {
+        var filter = new DeviceTelemetryFilter();
+        var device = new DeviceDefinition
+        {
+            DeviceId = "device-001",
+            Name = "IMU",
+            DeviceType = "IMU",
+            Protocol = DeviceProtocol.Ros2,
+            Properties = new Dictionary<string, string>
+            {
+                ["heartbeatInterval"] = "2s"
+            }
+        };
+
+        var baseline = CreateRecordWithPayload(
+            "{\"status\":\"stable\",\"temperature\":22.5,\"timestamp\":\"2026-01-01T00:00:00Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
+        Assert.True(filter.ShouldPersist(baseline, device));
+
+        var timestampOnlyChange = CreateRecordWithPayload(
+            "{\"status\":\"stable\",\"temperature\":22.5,\"timestamp\":\"2026-01-01T00:00:01Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:01Z"));
+        Assert.False(filter.ShouldPersist(timestampOnlyChange, device));
+
+        var heartbeat = CreateRecordWithPayload(
+            "{\"status\":\"stable\",\"temperature\":22.5,\"timestamp\":\"2026-01-01T00:00:03Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:03Z"));
+        Assert.True(filter.ShouldPersist(heartbeat, device));
+    }
+
+    [Fact]
+    public void DeviceTelemetryFilter_Uses_Custom_Idle_Persist_Interval_Per_Device()
+    {
+        var filter = new DeviceTelemetryFilter();
+        var device = new DeviceDefinition
+        {
+            DeviceId = "device-001",
+            Name = "IMU",
+            DeviceType = "IMU",
+            Protocol = DeviceProtocol.Ros2,
+            Properties = new Dictionary<string, string>
+            {
+                ["heartbeatInterval"] = "1s",
+                ["idlePersistInterval"] = "5s"
+            }
+        };
+
+        var baseline = CreateRecordWithPayload(
+            "{\"status\":\"stable\",\"temperature\":22.5,\"timestamp\":\"2026-01-01T00:00:00Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
+        Assert.True(filter.ShouldPersist(baseline, device));
+
+        var idleBeforeInterval = CreateRecordWithPayload(
+            "{\"status\":\"stable\",\"temperature\":22.5,\"timestamp\":\"2026-01-01T00:00:03Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:03Z"));
+        Assert.False(filter.ShouldPersist(idleBeforeInterval, device));
+
+        var idleAtInterval = CreateRecordWithPayload(
+            "{\"status\":\"stable\",\"temperature\":22.5,\"timestamp\":\"2026-01-01T00:00:05Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:05Z"));
+        Assert.True(filter.ShouldPersist(idleAtInterval, device));
+    }
+
+    [Fact]
+    public void DeviceTelemetryFilter_Persists_NonNumeric_State_Changes_Before_Heartbeat()
+    {
+        var filter = new DeviceTelemetryFilter();
+        var device = new DeviceDefinition
+        {
+            DeviceId = "device-001",
+            Name = "IMU",
+            DeviceType = "IMU",
+            Protocol = DeviceProtocol.Ros2,
+            Properties = new Dictionary<string, string>
+            {
+                ["heartbeatInterval"] = "15s"
+            }
+        };
+
+        var first = CreateRecordWithPayload(
+            "{\"mode\":\"manual\",\"timestamp\":\"2026-01-01T00:00:00Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
+        Assert.True(filter.ShouldPersist(first, device));
+
+        var modeChanged = CreateRecordWithPayload(
+            "{\"mode\":\"auto\",\"timestamp\":\"2026-01-01T00:00:01Z\"}",
+            DateTimeOffset.Parse("2026-01-01T00:00:01Z"));
+        Assert.True(filter.ShouldPersist(modeChanged, device));
+    }
+
     private static LogRecord<object> CreateRecord(double value, DateTimeOffset timestamp)
+    {
+        return CreateRecordWithPayload(
+            $"{{\"value\":{value.ToString(System.Globalization.CultureInfo.InvariantCulture)}}}",
+            timestamp);
+    }
+
+    private static LogRecord<object> CreateRecordWithPayload(string payloadJson, DateTimeOffset timestamp)
     {
         return new LogRecord<object>
         {
@@ -83,7 +184,7 @@ public sealed class DeviceTelemetryPolicyTests
                 Kind = LogRecordKind.Telemetry,
                 Priority = LogPriority.Normal
             },
-            Payload = new JsonElement[] { JsonDocument.Parse($"{{\"value\":{value.ToString(System.Globalization.CultureInfo.InvariantCulture)}}}").RootElement }
+            Payload = new JsonElement[] { JsonDocument.Parse(payloadJson).RootElement }
         };
     }
 }
