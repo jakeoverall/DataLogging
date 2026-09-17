@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DataLogging.Ingestion\DataLogging.Ingestion.csproj" />
+    <ProjectReference Include="..\..\src\DataLogging.Storage\DataLogging.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

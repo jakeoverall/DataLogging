@@ -1,7 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { TelemetryApiService } from '../../services/telemetry-api.service';
 import type { DeviceAlert, DeviceSummary } from '../../models/device';
 
@@ -12,8 +13,9 @@ import type { DeviceAlert, DeviceSummary } from '../../models/device';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnDestroy {
   private readonly api = inject(TelemetryApiService);
+  private readonly subscriptions = new Subscription();
 
   protected readonly devices = signal<DeviceSummary[]>([]);
   protected readonly isLoading = signal(true);
@@ -32,7 +34,7 @@ export class DashboardComponent {
   protected readonly alertCount = computed(() => this.alerts().length);
 
   constructor() {
-    this.loadDevices();
+    this.connectDeviceStream();
   }
 
   protected refreshDevices() {
@@ -62,9 +64,57 @@ export class DashboardComponent {
   private loadDevices() {
     this.api.getDevices().subscribe((devices) => {
       this.devices.set(devices);
+      this.alerts.set(this.buildAlerts(devices));
+      this.isLoading.set(false);
+    });
+  }
+
+  private connectDeviceStream() {
+    const streamSubscription = this.api.streamDevices().subscribe((devices) => {
+      this.devices.set(devices);
+      this.alerts.set(this.buildAlerts(devices));
       this.isLoading.set(false);
     });
 
-    this.api.getAlerts().subscribe((alerts) => this.alerts.set(alerts));
+    this.subscriptions.add(streamSubscription);
+  }
+
+  private buildAlerts(devices: DeviceSummary[]): DeviceAlert[] {
+    return devices.flatMap((device) => {
+      const items: DeviceAlert[] = [];
+
+      if (device.status === 'warning') {
+        items.push({
+          title: device.name,
+          message: 'Telemetry drift detected on the primary bus.',
+          severity: 'warning',
+          deviceId: device.id
+        });
+      }
+
+      if (device.status === 'offline') {
+        items.push({
+          title: device.name,
+          message: 'Endpoint heartbeat missed for an extended interval.',
+          severity: 'critical',
+          deviceId: device.id
+        });
+      }
+
+      if (device.alertCount > 0) {
+        items.push({
+          title: device.name,
+          message: `${device.alertCount} active issue${device.alertCount > 1 ? 's' : ''} require review.`,
+          severity: device.status === 'offline' ? 'critical' : 'info',
+          deviceId: device.id
+        });
+      }
+
+      return items;
+    });
+  }
+
+  ngOnDestroy() {
+    this.subscriptions.unsubscribe();
   }
 }

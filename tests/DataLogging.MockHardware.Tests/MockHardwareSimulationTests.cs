@@ -1,5 +1,7 @@
+using DataLogging.MockHardware.Configuration;
 using DataLogging.MockHardware.Models;
 using DataLogging.MockHardware.Registry;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
@@ -212,6 +214,84 @@ public sealed class MockHardwareSimulationTests
         Assert.True(resumed > initial);
 
         await host.StopAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task Custom_Duration_Strings_Are_Parsed_Without_Default_TimeSpan_Binder_Failure()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["NDevices"] = "3",
+                ["EmitFrequency"] = "150ms",
+                ["Duration"] = "1s",
+                ["Seed"] = "42"
+            })
+            .Build();
+
+        var options = new MockHardwareOptions();
+        new MockHardwareOptionsSetup(config).Configure(options);
+
+        Assert.Equal(TimeSpan.FromMilliseconds(150), options.EmitFrequency);
+        Assert.Equal(TimeSpan.FromSeconds(1), options.Duration);
+    }
+
+    [Fact]
+    public async Task Each_Device_Emits_At_Least_Ten_Messages_Before_The_Simulation_Ends()
+    {
+        using var host = MockHardwareTestHost.CreateHost(settings =>
+        {
+            settings["NDevices"] = "3";
+            settings["EmitFrequency"] = "50ms";
+            settings["Duration"] = "600ms";
+            settings["Seed"] = "42";
+        });
+
+        await host.StartAsync();
+
+        var ros2 = host.Services.GetRequiredService<IMockRos2Source>();
+        var canOpen = host.Services.GetRequiredService<IMockCanOpenSource>();
+        var ethernet = host.Services.GetRequiredService<IMockEthernetSource>();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        var ros2Count = await CountMessagesForDeviceAsync(ros2.ReadAsync(cts.Token), "device-001", cts.Token);
+        var canCount = await CountMessagesForDeviceAsync(canOpen.ReadAsync(cts.Token), "device-002", cts.Token);
+        var ethernetCount = await CountMessagesForDeviceAsync(ethernet.ReadAsync(cts.Token), "device-003", cts.Token);
+
+        Assert.True(ros2Count >= 10, $"Expected at least 10 ROS2 logs for device-001 but got {ros2Count}.");
+        Assert.True(canCount >= 10, $"Expected at least 10 CANOpen logs for device-002 but got {canCount}.");
+        Assert.True(ethernetCount >= 10, $"Expected at least 10 Ethernet logs for device-003 but got {ethernetCount}.");
+
+        await host.StopAsync(TimeSpan.FromSeconds(3));
+    }
+
+    private static async Task<int> CountMessagesForDeviceAsync<T>(IAsyncEnumerable<T> source, string deviceId, CancellationToken cancellationToken)
+    {
+        var count = 0;
+
+        await foreach (var item in source.WithCancellation(cancellationToken))
+        {
+            if (item is RawRos2Message ros2Message && ros2Message.DeviceId == deviceId)
+            {
+                count++;
+            }
+            else if (item is RawCanOpenMessage canMessage && canMessage.DeviceId == deviceId)
+            {
+                count++;
+            }
+            else if (item is RawEthernetMessage ethernetMessage && ethernetMessage.DeviceId == deviceId)
+            {
+                count++;
+            }
+
+            if (count >= 10)
+            {
+                return count;
+            }
+        }
+
+        return count;
     }
 
     private static async Task<string> CaptureFirstRos2PayloadAsync()

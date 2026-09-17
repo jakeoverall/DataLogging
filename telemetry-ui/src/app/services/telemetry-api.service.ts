@@ -116,6 +116,40 @@ export class TelemetryApiService {
     );
   }
 
+  streamDevices(): Observable<DeviceSummary[]> {
+    return new Observable<DeviceSummary[]>((subscriber) => {
+      const source = new EventSource(`${this.baseUrl}/api/devices/stream`);
+      let fallbackLoaded = false;
+
+      const handleSnapshot = (event: Event) => {
+        const message = event as MessageEvent<string>;
+        const payload = this.parseStreamPayload(message.data);
+        if (!payload) {
+          return;
+        }
+
+        subscriber.next(payload);
+      };
+
+      source.addEventListener('snapshot', handleSnapshot as EventListener);
+      source.onerror = () => {
+        if (fallbackLoaded) {
+          return;
+        }
+
+        fallbackLoaded = true;
+        this.getDevices().subscribe((devices) => subscriber.next(devices));
+      };
+
+      return () => {
+        source.removeEventListener('snapshot', handleSnapshot as EventListener);
+        source.close();
+      };
+    }).pipe(
+      catchError(() => this.getDevices())
+    );
+  }
+
   getDeviceById(deviceId: string): Observable<DeviceSummary | undefined> {
     return this.getDevices().pipe(
       map((devices) => devices.find((device) => device.id === deviceId || device.deviceId === deviceId))
@@ -199,6 +233,19 @@ export class TelemetryApiService {
       return atob(value);
     } catch {
       return 'No payload preview available.';
+    }
+
+    private parseStreamPayload(value: string): DeviceSummary[] | null {
+      try {
+        const parsed = JSON.parse(value) as { devices?: Array<Partial<DeviceSummary> & { deviceId?: string }> };
+        if (!parsed.devices) {
+          return null;
+        }
+
+        return parsed.devices.map((device) => normalizeDevice(device));
+      } catch {
+        return null;
+      }
     }
   }
 
